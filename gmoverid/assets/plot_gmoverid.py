@@ -399,11 +399,11 @@ def plot_caps(w_um, l_um, model='nmos180', vds_fixed=0.2, out_path=None):
     pol     = info['pol']
     vdd     = info.get('vdd', VDD)
     mp      = _parse_lib_params(str(info['file']), info['model_name'])
-    tox     = mp.get('tox',  4.1e-9)
-    vth0    = mp.get('vth0', 0.40)
-    cgso    = mp.get('cgso', 7.9e-10)
-    cgdo    = mp.get('cgdo', 7.9e-10)
-    nch     = mp.get('nch',  2.35e17) * 1e6
+    tox     = mp['tox']
+    vth0    = mp['vth0']
+    cgso    = mp['cgso']
+    cgdo    = mp['cgdo']
+    nch     = mp['nch'] * 1e6
 
     vgs = np.linspace(0, vdd, 500)
     cgs, cgd, cgb, cgg = compute_caps(vgs, vds_fixed, w_um, l_um,
@@ -458,11 +458,11 @@ def plot_caps_comparison(node_configs, polarity='nmos', out_path=None):
         pol   = info['pol']
         vdd   = info.get('vdd', VDD)
         mp    = _parse_lib_params(str(info['file']), info['model_name'])
-        tox   = mp.get('tox',  4.1e-9)
-        vth0  = mp.get('vth0', 0.40)
-        cgso  = mp.get('cgso', 7.9e-10)
-        cgdo  = mp.get('cgdo', 7.9e-10)
-        nch   = mp.get('nch',  2.35e17) * 1e6
+        tox   = mp['tox']
+        vth0  = mp['vth0']
+        cgso  = mp['cgso']
+        cgdo  = mp['cgdo']
+        nch   = mp['nch'] * 1e6
         vds_fixed = vdd * 0.3
 
         vgs = np.linspace(0, vdd, 500)

@@ -1,6 +1,6 @@
 ---
 name: gmoverid
-description: "gm/ID 晶体管表征与设计方法学，基于 ngspice + Python。包含两个独立工作流：(1) 表征工作流 — 对任意 MOSFET 模型生成三套标准曲线：栅电容 Cgg/Cgs/Cgd/Cgb vs Vgs、gm/ID 四象限特性（gm/Id vs Vov、Id/W vs gm/Id、fT vs gm/Id、gm·ro vs Vds）、IV 特性（线性/对数 Id vs Vov、输出特性）；支持 180nm 单节点及 45/22nm HP 多节点流程，内置 PTM 模型文件（180/45/22nm），无需额外下载。(2) 设计工作流 — GmIdTable 类将仿真数据构建为查找表（缓存至 logs/cache/），提供 lookup()、size()、size_from_ft()、size_from_gmro() API，按 gm/ID 方法论对 NMOS/PMOS 定尺寸。仅依赖 ngspice skill。当需要搭建或扩展 gm/ID 表征项目、生成特性曲线、解读设计曲线、或按 gm/ID 方法对晶体管定尺寸时，使用本 skill。"
+description: "gm/ID 晶体管表征与设计方法学，基于 ngspice + Python。包含两个独立工作流：(1) 表征工作流 — 对任意 MOSFET 模型生成三套标准曲线：栅电容 Cgg/Cgs/Cgd/Cgb vs Vgs、gm/ID 四象限特性（gm/Id vs Vov、Id/W vs gm/Id、fT vs gm/Id、gm·ro vs gm/Id）、IV 特性（线性/对数 Id vs Vov、输出特性）；支持 180nm 单节点及 45/22nm HP 多节点流程，内置 PTM 模型文件（180/45/22nm），无需额外下载。(2) 设计工作流 — GmIdTable 类将仿真数据构建为查找表（缓存至 logs/cache/），提供 lookup()、size()、size_from_ft()、size_from_gmro() API，按 gm/ID 方法论对 NMOS/PMOS 定尺寸。仅依赖 ngspice skill。当需要搭建或扩展 gm/ID 表征项目、生成特性曲线、解读设计曲线、或按 gm/ID 方法对晶体管定尺寸时，使用本 skill。"
 ---
 
 # gm/ID 表征与设计 Skill
@@ -13,7 +13,7 @@ description: "gm/ID 晶体管表征与设计方法学，基于 ngspice + Python�
 assets/
 ├── simulate_gmoverid.py   — ngspice 仿真引擎、数据提取、解析电容、MODEL_INFO 注册表
 ├── plot_gmoverid.py       — 所有 matplotlib 绘图函数
-├── run_gmoverid.py        — 180nm 单节点编排（SVT/LVT/HVT + 沟道长度扫描）
+├── run_gmoverid.py        — 180nm 单节点编排（NMOS/PMOS + 沟道长度扫描）
 ├── run_multinode.py       — 多节点编排（45/22nm HP）
 ├── design_gmoverid.py     — GmIdTable 查表/定尺寸 API + print_op()
 ├── models/                — 内置 PTM 模型文件（开箱即用）
@@ -30,7 +30,7 @@ assets/
     └── gmoverid_pmos_vsd.cir.tmpl  — PMOS |Vsd| 扫描（固定 |Vsg|）
 ```
 
-内置模型来自 [PTM — Arizona State University (ptm.asu.edu)](https://ptm.asu.edu)，免费用于学术研究。如需引用，请使用：W. Zhao and Y. Cao, "New Generation of Predictive Technology Model for Sub-45 nm Early Design Exploration," *IEEE Trans. Electron Devices*, vol. 53, no. 11, pp. 2816–2823, Nov. 2006. doi: 10.1109/TED.2006.884077。如需其他节点（65nm、90nm、130nm、32nm LP、PTM-MG FinFET 等），可安装 `transistor-models` skill（原始 PTM 文件，需自行配置 MODEL_INFO）或从 [mec.umn.edu/ptm](https://mec.umn.edu/ptm) 下载，复制到项目 `models/` 目录。
+内置模型来自 [PTM — Arizona State University (ptm.asu.edu)](https://ptm.asu.edu)，免费用于学术研究。如需引用，请使用：W. Zhao and Y. Cao, "New Generation of Predictive Technology Model for Sub-45 nm Early Design Exploration," *IEEE Trans. Electron Devices*, vol. 53, no. 11, pp. 2816–2823, Nov. 2006. doi: 10.1109/TED.2006.884077。如需内置三节点之外的其他工艺，可安装 `transistor-models` skill（完整 PTM 模型库，需自行配置 MODEL_INFO）或从 [mec.umn.edu/ptm](https://mec.umn.edu/ptm) 下载，复制到项目 `models/` 目录。
 
 ---
 
@@ -57,9 +57,9 @@ assets/
 **gm/ID 四象限布局（`plot_main`，2×2）：**
 ```
 (0,0) gm/Id [V⁻¹] vs Vov      | (0,1) Id/W [µA/µm] vs gm/Id  (对数 Y)
-(1,0) fT [GHz]    vs gm/Id    | (1,1) gm·ro vs Vds (0→VDD)
+(1,0) fT [GHz]    vs gm/Id    | (1,1) gm·ro         vs gm/Id
 ```
-- (0,0)(0,1)(1,0)：以 Vds 为参数；(1,1)：以 Vgs 偏置为参数
+- 全部四格以 Vds 为参数族（VDS_LIST）
 - gm/Id X 轴：xlim=[4,24]，每 2 V⁻¹ 一格
 
 ### 核心文件角色
@@ -68,8 +68,8 @@ assets/
 |------|------|
 | `simulate_gmoverid.py` | `run_vgs/vds/vsg/vsd_sweeps()` → 数据字典列表；`MODEL_INFO` 注册表；`compute_caps()` |
 | `plot_gmoverid.py` | `plot_main()`、`plot_comparison()`、`plot_iv()`、`plot_caps()`、`plot_caps_comparison()`、`print_summary()` |
-| `run_gmoverid.py` | 180nm：LVT/SVT/HVT + 沟道长度扫描对比 |
-| `run_multinode.py` | 45/32/22/16nm HP：`NODE_CFG` 驱动逐节点扫描 + 跨节点对比图 |
+| `run_gmoverid.py` | 180nm NMOS/PMOS + 沟道长度扫描对比 |
+| `run_multinode.py` | 45/22nm HP：`NODE_CFG` 驱动逐节点扫描 + 跨节点对比图 |
 
 ### 新增工艺节点
 

@@ -168,8 +168,6 @@ VDS_LIST  = [0.2, 0.5, 0.9]           # Vgs-sweep: multiple Vds values (displaye
 VDS_GDS   = [0.5, 0.7, 0.9, 1.1, 1.3, 1.5]  # Vgs-sweep at saturation Vds for gds lstsq
 VGS_BIAS  = [0.5, 0.6, 0.8, 1.0]      # Vds-sweep: multiple Vgs bias points
 
-COX = 8.854e-12 * 3.9 / 4.1e-9        # ~8.42 mF/m²  (TOX = 4.1 nm, 180nm default)
-
 def _cox(tox):
     """Oxide capacitance [F/m²] from physical oxide thickness."""
     return 8.854e-12 * 3.9 / tox
@@ -230,8 +228,8 @@ def _parse_wrdata_2vec(path):
 # ─────────────────────────────────────────────────────────────────────────────
 # Analytical capacitances (BSIM3v3 piecewise model)
 # ─────────────────────────────────────────────────────────────────────────────
-def compute_caps(vgs_arr, vds_fixed, w_um, l_um, vth=None,
-                 cgso=7.9e-10, cgdo=7.9e-10, nch=2.3549e17*1e6, tox=4.1e-9):
+def compute_caps(vgs_arr, vds_fixed, w_um, l_um, vth,
+                 cgso, cgdo, nch, tox):
     """
     Cgs, Cgd, Cgb, Cgg vs Vgs (or |Vsg| for PMOS) analytically.
     Works for both NMOS and PMOS when called with absolute overdrive values.
@@ -245,9 +243,6 @@ def compute_caps(vgs_arr, vds_fixed, w_um, l_um, vth=None,
     nch        : body doping [m^-3] (for depletion cap)
     tox        : gate oxide thickness [m] (for per-node COX)
     """
-    if vth is None:
-        vth = 0.40   # fallback
-
     W       = w_um * 1e-6
     L       = l_um * 1e-6
     cox_i   = _cox(tox) * W * L
@@ -303,7 +298,7 @@ def sweep_vgs(vds, w_um=W_UM, l_um=L_UM, model='nmos180'):
     vgs_stop   = info.get('vgs_stop', VGS_STOP)
     model_name = info['model_name']
     mparams    = _parse_lib_params(str(info['file']), model_name)
-    tox        = mparams.get('tox', 4.1e-9)
+    tox        = mparams['tox']
     tmpl       = TMPL_VGS.read_text(encoding='ascii')
     tag        = f'{model}_L{l_um*1000:.0f}nm_vds{vds:.2f}'.replace('.', 'p')
     cir        = LOG_DIR / f'_vgs_{tag}.cir'
@@ -333,9 +328,9 @@ def sweep_vgs(vds, w_um=W_UM, l_um=L_UM, model='nmos180'):
     vth  = extract_vth(vgs, id_, w_um, l_um)
     cgs, cgd, cgb, cgg = compute_caps(
         vgs, vds, w_um, l_um, vth=vth,
-        cgso=mparams.get('cgso', 7.9e-10),
-        cgdo=mparams.get('cgdo', 7.9e-10),
-        nch =mparams.get('nch',  2.3549e17) * 1e6,
+        cgso=mparams['cgso'],
+        cgdo=mparams['cgdo'],
+        nch =mparams['nch'] * 1e6,
         tox =tox)
     id_thresh = 1e-13
     gmid = np.where(id_ > id_thresh, gm / id_, np.nan)
@@ -398,7 +393,7 @@ def sweep_vsg(vsd, w_um=W_UM, l_um=L_UM, model='pmos180'):
     vdd        = info.get('vdd', VDD)
     model_name = info['model_name']
     mparams    = _parse_lib_params(str(info['file']), model_name)
-    tox        = mparams.get('tox', 4.1e-9)
+    tox        = mparams['tox']
     tmpl       = TMPL_VSG.read_text(encoding='ascii')
     tag        = f'{model}_L{l_um*1000:.0f}nm_vsd{vsd:.2f}'.replace('.', 'p')
     cir        = LOG_DIR / f'_vsg_{tag}.cir'
@@ -438,9 +433,9 @@ def sweep_vsg(vsd, w_um=W_UM, l_um=L_UM, model='pmos180'):
     vth  = extract_vth(vsg, id_, w_um, l_um)
     cgs, cgd, cgb, cgg = compute_caps(
         vsg, vsd, w_um, l_um, vth=vth,
-        cgso=mparams.get('cgso', 6.8e-10),
-        cgdo=mparams.get('cgdo', 6.8e-10),
-        nch =mparams.get('nch',  6.0165e16) * 1e6,
+        cgso=mparams['cgso'],
+        cgdo=mparams['cgdo'],
+        nch =mparams['nch'] * 1e6,
         tox =tox)
     id_thresh = 1e-13
     gmid = np.where(id_ > id_thresh, gm / id_, np.nan)

@@ -1,6 +1,6 @@
 __pycache__/
   *.pyc
-  *.log
+*.log
   logs/
   plots/
   .DS_Store
@@ -10,6 +10,7 @@ __pycache__/
 reference/
 logs/
 models/
+!/gmoverid/assets/models/
 plots/
 netlist/
 trained_models/

@@ -14,8 +14,8 @@
 **gm/ID 四象限特性图**（2×2）
 - **gm/ID vs Vov**：完整的弱反型→强反型特性，含 BJT 极限 q/kT = 38.6 V⁻¹ 和 2/Vov 渐近线参考
 - **Id/W vs gm/ID**（对数 Y 轴）：电流密度随偏置变化，跨越约 3 个数量级
-- **fT vs gm/ID**：截止频率，PTM 180nm 峰值约 27 GHz，PTM 22nm HP 峰值超过 600 GHz
-- **gm·ro vs Vds**：本征增益随漏极偏置的分布；180nm 在 gm/ID ≈ 15 时峰值约 50，22nm HP 仅 2–4（短沟道效应显著）
+- **fT vs gm/ID**：截止频率，PTM 180nm 峰值约 50 GHz，PTM 22nm HP 峰值超过 600 GHz
+- **gm·ro vs gm/ID**：本征增益随偏置点的分布；180nm 在弱反型区（gm/ID ≈ 20）约 40–42，22nm HP 仅 2–4（短沟道效应显著）
 
 **IV 特性图**（2×2）
 - Id vs Vov 线性坐标：清晰显示阈值和饱和电流
@@ -27,7 +27,6 @@
 - Cgg / Cgs / Cgd / Cgb vs Vgs：展示截止区→阈值→强反型各工作区的电容分布与转换
 
 **对比图**
-- LVT / SVT / HVT 阈值变体对比：gm/ID 曲线形状近似，HVT 具有更高本征增益和更低漏电
 - 沟道长度对比（L = 180 / 360 / 1000 nm）：长沟道显著提升 gm·ro（可达 ~140），但 fT 相应降低
 - 跨节点对比（180nm SVT vs 22nm HP）：直观呈现工艺代际的速度–增益权衡
 
@@ -88,7 +87,7 @@ cp -r gmoverid/assets/* <项目目录>/
 mkdir -p <项目目录>/plots <项目目录>/logs
 
 # 运行
-python run_gmoverid.py      # 180nm SVT/LVT/HVT + 沟道长度扫描
+python run_gmoverid.py      # 180nm NMOS/PMOS + 沟道长度扫描
 python run_multinode.py     # 45nm / 22nm HP 多节点对比
 ```
 
