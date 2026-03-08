@@ -36,7 +36,7 @@ import numpy as np
 from pathlib import Path
 
 from simulate_gmoverid import (
-    MODEL_INFO, LOG_DIR,
+    MODEL_INFO, LOG_DIR, _parse_lib_params,
     sweep_vgs, sweep_vsg,
     run_vds_sweeps, run_vsd_sweeps,
 )
@@ -149,8 +149,9 @@ class GmIdTable:
         self.L      = float(L)
         self._info  = MODEL_INFO[model]
         self._vdd   = float(self._info.get('vdd',  1.8))
-        self._vth0  = float(self._info.get('vth0', 0.4))
         self._pol   = self._info.get('pol', 'nmos')
+        _mparams    = _parse_lib_params(str(self._info['file']), model)
+        self._vth0  = float(_mparams.get('vth0', 0.4))
 
         self.vds = round(self._vdd / 2.0, 3) if vds is None else float(vds)
 

@@ -3,7 +3,7 @@
 simulate_gmoverid.py
 ====================
 Simulation engine for gm/Id characterization.
-Supports PTM 180nm BSIM3v3 and PTM 45/32/22/16nm HP BSIM4 models.
+Supports PTM 180nm BSIM3v3 and PTM 45/22nm HP BSIM4 models.
 
 Public API
 ----------
@@ -22,7 +22,7 @@ Return dict keys (unified NMOS/PMOS convention, all values positive):
   For PMOS: vgs = |Vsg|, vds = |Vsd|, vov = |Vsg| - |Vth|
 """
 
-import subprocess, sys, re, shutil
+import subprocess, sys, re, shutil, functools
 import numpy as np
 from pathlib import Path
 
@@ -45,62 +45,108 @@ def _mf(name):
     """Return Path to a model file in models/."""
     return BASE_DIR / 'models' / name
 
+
+@functools.lru_cache(maxsize=32)
+def _parse_lib_params(lib_file, model_name):
+    """
+    Parse BSIM model parameters from a .lib file for the named model.
+
+    Handles both BSIM3v3 (180nm) and BSIM4 (45/22nm HP) naming conventions:
+      tox   : TOX  (BSIM3) or TOXE  (BSIM4)
+      nch   : NCH  (BSIM3) or NDEP  (BSIM4)  [raw cm^-3, caller multiplies by 1e6]
+      cgso  : CGSO (both)
+      cgdo  : CGDO (both)
+      vth0  : VTH0 (both, absolute value used)
+
+    Returns dict with lowercase keys; all values are floats in SI units
+    (nch is returned in cm^-3 — multiply by 1e6 to get m^-3).
+    """
+    params = {}
+    in_model = False
+    with open(lib_file, encoding='utf-8', errors='replace') as fh:
+        for line in fh:
+            stripped = line.strip()
+            lo = stripped.lower()
+            # Detect start of the target .model block
+            if lo.startswith('.model'):
+                tokens = stripped.split()
+                if len(tokens) >= 2 and tokens[1].lower() == model_name.lower():
+                    in_model = True
+                else:
+                    in_model = False
+                continue
+            if not in_model:
+                continue
+            # End of model block: any new directive that is not a continuation
+            if stripped and not stripped.startswith('+') and not stripped.startswith('*'):
+                in_model = False
+                continue
+            if not stripped.startswith('+'):
+                continue
+            # Parse key=value pairs on continuation lines.
+            # Lines use space-padded format: e.g. "+TOX    = 4.1E-9   NCH = 2.35E17"
+            content = stripped[1:]  # strip leading '+'
+            # Normalise: collapse multiple spaces, then split on whitespace
+            # Each "key = val" triple may be separate tokens — rejoin around '='
+            tokens = re.split(r'\s+', content.strip())
+            i = 0
+            while i < len(tokens):
+                tok = tokens[i]
+                if tok == '=':
+                    # key is tokens[i-1], val is tokens[i+1]
+                    if i >= 1 and i + 1 < len(tokens):
+                        key = tokens[i - 1].lower()
+                        try:
+                            params[key] = float(tokens[i + 1])
+                        except ValueError:
+                            pass
+                    i += 2
+                elif '=' in tok:
+                    key, _, val_str = tok.partition('=')
+                    key = key.strip().lower()
+                    val_str = val_str.strip()
+                    if not val_str and i + 1 < len(tokens):
+                        val_str = tokens[i + 1]
+                        i += 1
+                    try:
+                        params[key] = float(val_str)
+                    except ValueError:
+                        pass
+                    i += 1
+                else:
+                    i += 1
+
+    # Normalise names: BSIM4 uses 'toxe' and 'ndep' instead of 'tox' and 'nch'
+    if 'toxe' in params and 'tox' not in params:
+        params['tox'] = params['toxe']
+    if 'ndep' in params and 'nch' not in params:
+        params['nch'] = params['ndep']
+    # VTH0 may be negative for PMOS — store magnitude
+    if 'vth0' in params:
+        params['vth0'] = abs(params['vth0'])
+    return params
+
 # ─────────────────────────────────────────────────────────────────────────────
-# Model registry
-# Each entry may include optional per-model overrides:
-#   vdd      : supply voltage [V]  (default: 1.8)
-#   vgs_stop : max Vgs for sweep  (default: 1.8)
-#   vds_stop : max Vds for sweep  (default: 1.8)
-#   tox      : gate oxide thickness [m]  (default: 4.1e-9)
+# Model registry  — only sweep-configuration parameters here.
+# Transistor model parameters (cgso, cgdo, nch, tox, vth0) are read directly
+# from the .lib file by _parse_lib_params() and never duplicated in Python.
 # ─────────────────────────────────────────────────────────────────────────────
 MODEL_INFO = {
-    # ── 180nm BSIM3v3 (PTM) ─────────────────────────────────────────────────
-    'nmos180':     dict(pol='nmos', vth0=0.40,  cgso=7.9e-10, cgdo=7.9e-10,
-                        nch=2.3549e17*1e6, mu=270e-4, file=_mf('nmos180.lib'),
-                        vdd=1.8, vgs_stop=1.8, vds_stop=1.8, tox=4.1e-9),
-    'nmos180_lvt': dict(pol='nmos', vth0=0.30,  cgso=7.9e-10, cgdo=7.9e-10,
-                        nch=2.3549e17*1e6, mu=270e-4, file=_mf('nmos180.lib'),
-                        vdd=1.8, vgs_stop=1.8, vds_stop=1.8, tox=4.1e-9),
-    'nmos180_hvt': dict(pol='nmos', vth0=0.55,  cgso=7.9e-10, cgdo=7.9e-10,
-                        nch=2.3549e17*1e6, mu=270e-4, file=_mf('nmos180.lib'),
-                        vdd=1.8, vgs_stop=1.8, vds_stop=1.8, tox=4.1e-9),
-    'pmos180':     dict(pol='pmos', vth0=0.42,  cgso=6.8e-10, cgdo=6.8e-10,
-                        nch=6.0165e16*1e6, mu=117.5e-4, file=_mf('pmos180.lib'),
-                        vdd=1.8, vgs_stop=1.8, vds_stop=1.8, tox=4.1e-9),
-    'pmos180_lvt': dict(pol='pmos', vth0=0.32,  cgso=6.8e-10, cgdo=6.8e-10,
-                        nch=6.0165e16*1e6, mu=117.5e-4, file=_mf('pmos180.lib'),
-                        vdd=1.8, vgs_stop=1.8, vds_stop=1.8, tox=4.1e-9),
-    'pmos180_hvt': dict(pol='pmos', vth0=0.57,  cgso=6.8e-10, cgdo=6.8e-10,
-                        nch=6.0165e16*1e6, mu=117.5e-4, file=_mf('pmos180.lib'),
-                        vdd=1.8, vgs_stop=1.8, vds_stop=1.8, tox=4.1e-9),
+    # ── 180nm BSIM3v3 (PTM) — VDD = 1.8 V ──────────────────────────────────
+    'nmos180':  dict(pol='nmos', file=_mf('ptm180.lib'),  model_name='NMOS',
+                     vdd=1.8, vgs_stop=1.8, vds_stop=1.8),
+    'pmos180':  dict(pol='pmos', file=_mf('ptm180.lib'),  model_name='PMOS',
+                     vdd=1.8, vgs_stop=1.8, vds_stop=1.8),
     # ── 45nm HP BSIM4 (PTM) — VDD = 1.0 V ──────────────────────────────────
-    'nmos45hp':    dict(pol='nmos', vth0=0.469, cgso=1.1e-10, cgdo=1.1e-10,
-                        nch=3.24e18*1e6, mu=0.054, file=_mf('nmos45hp.lib'),
-                        vdd=1.0, vgs_stop=1.2, vds_stop=1.2, tox=1.25e-9),
-    'pmos45hp':    dict(pol='pmos', vth0=0.492, cgso=1.1e-10, cgdo=1.1e-10,
-                        nch=2.44e18*1e6, mu=0.020, file=_mf('pmos45hp.lib'),
-                        vdd=1.0, vgs_stop=1.2, vds_stop=1.2, tox=1.3e-9),
-    # ── 32nm HP BSIM4 (PTM) — VDD = 0.9 V ──────────────────────────────────
-    'nmos32hp':    dict(pol='nmos', vth0=0.494, cgso=8.5e-11, cgdo=8.5e-11,
-                        nch=4.12e18*1e6, mu=0.050, file=_mf('nmos32hp.lib'),
-                        vdd=0.9, vgs_stop=1.1, vds_stop=1.1, tox=1.15e-9),
-    'pmos32hp':    dict(pol='pmos', vth0=0.492, cgso=8.5e-11, cgdo=8.5e-11,
-                        nch=3.07e18*1e6, mu=0.014, file=_mf('pmos32hp.lib'),
-                        vdd=0.9, vgs_stop=1.1, vds_stop=1.1, tox=1.2e-9),
+    'nmos45hp': dict(pol='nmos', file=_mf('ptm45hp.lib'), model_name='nmos',
+                     vdd=1.0, vgs_stop=1.2, vds_stop=1.2),
+    'pmos45hp': dict(pol='pmos', file=_mf('ptm45hp.lib'), model_name='pmos',
+                     vdd=1.0, vgs_stop=1.2, vds_stop=1.2),
     # ── 22nm HP BSIM4 (PTM) — VDD = 0.8 V ──────────────────────────────────
-    'nmos22hp':    dict(pol='nmos', vth0=0.503, cgso=7.0e-11, cgdo=7.0e-11,
-                        nch=5.02e18*1e6, mu=0.040, file=_mf('nmos22hp.lib'),
-                        vdd=0.8, vgs_stop=1.0, vds_stop=1.0, tox=1.05e-9),
-    'pmos22hp':    dict(pol='pmos', vth0=0.490, cgso=7.0e-11, cgdo=7.0e-11,
-                        nch=3.70e18*1e6, mu=0.012, file=_mf('pmos22hp.lib'),
-                        vdd=0.8, vgs_stop=1.0, vds_stop=1.0, tox=1.1e-9),
-    # ── 16nm HP BSIM4 (PTM) — VDD = 0.7 V ──────────────────────────────────
-    'nmos16hp':    dict(pol='nmos', vth0=0.480, cgso=6.0e-11, cgdo=6.0e-11,
-                        nch=6.00e18*1e6, mu=0.030, file=_mf('nmos16hp.lib'),
-                        vdd=0.7, vgs_stop=0.9, vds_stop=0.9, tox=9.5e-10),
-    'pmos16hp':    dict(pol='pmos', vth0=0.480, cgso=6.0e-11, cgdo=6.0e-11,
-                        nch=4.50e18*1e6, mu=0.010, file=_mf('pmos16hp.lib'),
-                        vdd=0.7, vgs_stop=0.9, vds_stop=0.9, tox=1.05e-9),
+    'nmos22hp': dict(pol='nmos', file=_mf('ptm22hp.lib'), model_name='nmos',
+                     vdd=0.8, vgs_stop=1.0, vds_stop=1.0),
+    'pmos22hp': dict(pol='pmos', file=_mf('ptm22hp.lib'), model_name='pmos',
+                     vdd=0.8, vgs_stop=1.0, vds_stop=1.0),
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -118,7 +164,8 @@ VDS_START = 0.0
 VDS_STOP  = 1.8
 VDS_STEP  = 0.002
 
-VDS_LIST  = [0.1, 0.5, 0.9, 1.8]      # Vgs-sweep: multiple Vds values
+VDS_LIST  = [0.2, 0.5, 0.9]           # Vgs-sweep: multiple Vds values (displayed)
+VDS_GDS   = [0.5, 0.7, 0.9, 1.1, 1.3, 1.5]  # Vgs-sweep at saturation Vds for gds lstsq
 VGS_BIAS  = [0.5, 0.6, 0.8, 1.0]      # Vds-sweep: multiple Vgs bias points
 
 COX = 8.854e-12 * 3.9 / 4.1e-9        # ~8.42 mF/m²  (TOX = 4.1 nm, 180nm default)
@@ -252,19 +299,21 @@ def extract_vth(vgs, id_arr, w_um, l_um, id_ref_norm=1e-7):
 # NMOS Vgs sweep
 # ─────────────────────────────────────────────────────────────────────────────
 def sweep_vgs(vds, w_um=W_UM, l_um=L_UM, model='nmos180'):
-    info     = MODEL_INFO[model]
-    vgs_stop = info.get('vgs_stop', VGS_STOP)
-    tox      = info.get('tox', 4.1e-9)
-    tmpl     = TMPL_VGS.read_text(encoding='ascii')
-    tag      = f'{model}_L{l_um*1000:.0f}nm_vds{vds:.2f}'.replace('.', 'p')
-    cir      = LOG_DIR / f'_vgs_{tag}.cir'
-    dat      = LOG_DIR / f'_vgs_{tag}.dat'
-    log      = LOG_DIR / f'_vgs_{tag}.log'
+    info       = MODEL_INFO[model]
+    vgs_stop   = info.get('vgs_stop', VGS_STOP)
+    model_name = info['model_name']
+    mparams    = _parse_lib_params(str(info['file']), model_name)
+    tox        = mparams.get('tox', 4.1e-9)
+    tmpl       = TMPL_VGS.read_text(encoding='ascii')
+    tag        = f'{model}_L{l_um*1000:.0f}nm_vds{vds:.2f}'.replace('.', 'p')
+    cir        = LOG_DIR / f'_vgs_{tag}.cir'
+    dat        = LOG_DIR / f'_vgs_{tag}.dat'
+    log        = LOG_DIR / f'_vgs_{tag}.log'
     if dat.exists():
         dat.unlink()
 
     nl = tmpl.format(
-        model_path=_spath(info['file']), model=model,
+        model_path=_spath(info['file']), model=model_name,
         vds_v=f'{vds:.4f}', w_um=f'{w_um:.4f}', l_um=f'{l_um:.4f}',
         vgs_start=f'{VGS_START:.3f}', vgs_stop=f'{vgs_stop:.3f}',
         vgs_step=f'{VGS_STEP:.5f}', dat_path=_spath(dat),
@@ -282,9 +331,12 @@ def sweep_vgs(vds, w_um=W_UM, l_um=L_UM, model='nmos180'):
     gm   = np.maximum(np.gradient(id_, vgs), 0.0)
 
     vth  = extract_vth(vgs, id_, w_um, l_um)
-    cgs, cgd, cgb, cgg = compute_caps(vgs, vds, w_um, l_um, vth=vth,
-                                       cgso=info['cgso'], cgdo=info['cgdo'],
-                                       nch=info['nch'], tox=tox)
+    cgs, cgd, cgb, cgg = compute_caps(
+        vgs, vds, w_um, l_um, vth=vth,
+        cgso=mparams.get('cgso', 7.9e-10),
+        cgdo=mparams.get('cgdo', 7.9e-10),
+        nch =mparams.get('nch',  2.3549e17) * 1e6,
+        tox =tox)
     id_thresh = 1e-13
     gmid = np.where(id_ > id_thresh, gm / id_, np.nan)
     ft   = np.where(cgg > 0, gm / (2.0 * np.pi * cgg), np.nan)
@@ -300,8 +352,9 @@ def sweep_vgs(vds, w_um=W_UM, l_um=L_UM, model='nmos180'):
 # NMOS Vds sweep
 # ─────────────────────────────────────────────────────────────────────────────
 def sweep_vds(vgs_bias, w_um=W_UM, l_um=L_UM, model='nmos180'):
-    info     = MODEL_INFO[model]
-    vds_stop = info.get('vds_stop', VDS_STOP)
+    info       = MODEL_INFO[model]
+    vds_stop   = info.get('vds_stop', VDS_STOP)
+    model_name = info['model_name']
     tmpl = TMPL_VDS.read_text(encoding='ascii')
     tag  = f'{model}_L{l_um*1000:.0f}nm_vgs{vgs_bias:.2f}'.replace('.', 'p')
     cir  = LOG_DIR / f'_vds_{tag}.cir'
@@ -311,7 +364,7 @@ def sweep_vds(vgs_bias, w_um=W_UM, l_um=L_UM, model='nmos180'):
         dat.unlink()
 
     nl = tmpl.format(
-        model_path=_spath(info['file']), model=model,
+        model_path=_spath(info['file']), model=model_name,
         vgs_v=f'{vgs_bias:.4f}', w_um=f'{w_um:.4f}', l_um=f'{l_um:.4f}',
         vds_start=f'{VDS_START:.3f}', vds_stop=f'{vds_stop:.3f}',
         vds_step=f'{VDS_STEP:.5f}', dat_path=_spath(dat),
@@ -341,21 +394,23 @@ def sweep_vsg(vsd, w_um=W_UM, l_um=L_UM, model='pmos180'):
     Returns same dict format as sweep_vgs() for unified plotting:
       vgs = |Vsg|, vds = |Vsd|, vov = |Vsg| - |Vth|
     """
-    info     = MODEL_INFO[model]
-    vdd      = info.get('vdd', VDD)
-    tox      = info.get('tox', 4.1e-9)
-    tmpl     = TMPL_VSG.read_text(encoding='ascii')
-    tag      = f'{model}_L{l_um*1000:.0f}nm_vsd{vsd:.2f}'.replace('.', 'p')
-    cir      = LOG_DIR / f'_vsg_{tag}.cir'
-    dat      = LOG_DIR / f'_vsg_{tag}.dat'
-    log      = LOG_DIR / f'_vsg_{tag}.log'
+    info       = MODEL_INFO[model]
+    vdd        = info.get('vdd', VDD)
+    model_name = info['model_name']
+    mparams    = _parse_lib_params(str(info['file']), model_name)
+    tox        = mparams.get('tox', 4.1e-9)
+    tmpl       = TMPL_VSG.read_text(encoding='ascii')
+    tag        = f'{model}_L{l_um*1000:.0f}nm_vsd{vsd:.2f}'.replace('.', 'p')
+    cir        = LOG_DIR / f'_vsg_{tag}.cir'
+    dat        = LOG_DIR / f'_vsg_{tag}.dat'
+    log        = LOG_DIR / f'_vsg_{tag}.log'
     if dat.exists():
         dat.unlink()
 
     vd_v = vdd - vsd          # absolute drain voltage = VDD - |Vsd|
 
     nl = tmpl.format(
-        model_path=_spath(info['file']), model=model,
+        model_path=_spath(info['file']), model=model_name,
         vdd_v=f'{vdd:.4f}', vd_v=f'{vd_v:.4f}',
         w_um=f'{w_um:.4f}', l_um=f'{l_um:.4f}',
         vg_start=f'{vdd:.3f}', vg_stop='0.000', vg_step=f'{-VGS_STEP:.5f}',
@@ -381,9 +436,12 @@ def sweep_vsg(vsd, w_um=W_UM, l_um=L_UM, model='pmos180'):
 
     gm   = np.maximum(np.gradient(id_, vsg), 0.0)
     vth  = extract_vth(vsg, id_, w_um, l_um)
-    cgs, cgd, cgb, cgg = compute_caps(vsg, vsd, w_um, l_um, vth=vth,
-                                       cgso=info['cgso'], cgdo=info['cgdo'],
-                                       nch=info['nch'], tox=tox)
+    cgs, cgd, cgb, cgg = compute_caps(
+        vsg, vsd, w_um, l_um, vth=vth,
+        cgso=mparams.get('cgso', 6.8e-10),
+        cgdo=mparams.get('cgdo', 6.8e-10),
+        nch =mparams.get('nch',  6.0165e16) * 1e6,
+        tox =tox)
     id_thresh = 1e-13
     gmid = np.where(id_ > id_thresh, gm / id_, np.nan)
     ft   = np.where(cgg > 0, gm / (2.0 * np.pi * cgg), np.nan)
@@ -403,14 +461,15 @@ def sweep_vsd(vsg_bias, w_um=W_UM, l_um=L_UM, model='pmos180'):
     PMOS |Vsd| sweep at fixed |Vsg|.
     Returns same dict format as sweep_vds().
     """
-    info     = MODEL_INFO[model]
-    vdd      = info.get('vdd', VDD)
-    vds_stop = info.get('vds_stop', VDS_STOP)
-    tmpl     = TMPL_VSD_P.read_text(encoding='ascii')
-    tag      = f'{model}_L{l_um*1000:.0f}nm_vsg{vsg_bias:.2f}'.replace('.', 'p')
-    cir      = LOG_DIR / f'_vsd_{tag}.cir'
-    dat      = LOG_DIR / f'_vsd_{tag}.dat'
-    log      = LOG_DIR / f'_vsd_{tag}.log'
+    info       = MODEL_INFO[model]
+    vdd        = info.get('vdd', VDD)
+    vds_stop   = info.get('vds_stop', VDS_STOP)
+    model_name = info['model_name']
+    tmpl       = TMPL_VSD_P.read_text(encoding='ascii')
+    tag        = f'{model}_L{l_um*1000:.0f}nm_vsg{vsg_bias:.2f}'.replace('.', 'p')
+    cir        = LOG_DIR / f'_vsd_{tag}.cir'
+    dat        = LOG_DIR / f'_vsd_{tag}.dat'
+    log        = LOG_DIR / f'_vsd_{tag}.log'
     if dat.exists():
         dat.unlink()
 
@@ -418,7 +477,7 @@ def sweep_vsd(vsg_bias, w_um=W_UM, l_um=L_UM, model='pmos180'):
     vd_stop = vdd - vds_stop          # VD_min: negative when vds_stop > vdd
 
     nl = tmpl.format(
-        model_path=_spath(info['file']), model=model,
+        model_path=_spath(info['file']), model=model_name,
         vdd_v=f'{vdd:.4f}', vg_v=f'{vg_v:.4f}',
         w_um=f'{w_um:.4f}', l_um=f'{l_um:.4f}',
         vd_start=f'{vdd:.4f}', vd_stop=f'{vd_stop:.4f}', vd_step=f'{-VDS_STEP:.5f}',

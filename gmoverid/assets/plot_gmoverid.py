@@ -34,7 +34,8 @@ import numpy as np
 from pathlib import Path
 
 from simulate_gmoverid import (COX, MODEL_INFO, VDD, VDS_STOP,
-                                compute_caps, W_UM, L_UM)
+                                compute_caps, W_UM, L_UM,
+                                _parse_lib_params)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Style
@@ -64,7 +65,7 @@ PLOT_DIR.mkdir(parents=True, exist_ok=True)
 # ─────────────────────────────────────────────────────────────────────────────
 # Internal helpers
 # ─────────────────────────────────────────────────────────────────────────────
-def _gds_at_vds(vds_results, vgs_arr, vds_ref):
+def _gds_at_vds(vds_results, vgs_arr, vds_ref, gm_arr=None):
     """
     Interpolate gds(Vgs) at a fixed VDS operating point using VDS output sweeps.
 
@@ -74,6 +75,10 @@ def _gds_at_vds(vds_results, vgs_arr, vds_ref):
                   Each dict has: vgs (scalar bias), vds (array), gds (array).
     vgs_arr     : 1D array of Vgs (or |Vsg|) values from the primary VGS sweep.
     vds_ref     : float, the VDS at which to evaluate gds.
+    gm_arr      : optional gm array (same length as vgs_arr). When provided,
+                  the subthreshold extrapolation below the measured Vgs range
+                  scales gds proportionally to gm so that gm·ro remains
+                  constant (physically correct: in subthreshold gds ∝ Id ∝ gm).
 
     Returns gds array, same shape as vgs_arr, clipped to >= 1e-15.
     """
@@ -95,8 +100,50 @@ def _gds_at_vds(vds_results, vgs_arr, vds_ref):
     # gds ∝ exp(Vgs/Vth) in weak inversion → interpolate in log space
     log_gds = np.log(np.maximum(gds_pts, 1e-30))
     log_gds_interp = np.interp(vgs_arr, vgs_pts, log_gds,
-                                left=log_gds[0], right=log_gds[-1])
+                                left=np.nan, right=log_gds[-1])
+
+    # Below lowest measured Vgs (subthreshold region): gds ∝ Id ∝ gm, so
+    # gm·ro should remain constant at gm·ro(Vgs_min).
+    # Scale gds proportionally to gm relative to its value at Vgs_min.
+    below = vgs_arr < vgs_pts[0]
+    if np.any(below):
+        gds_at_min = np.exp(log_gds[0])
+        if gm_arr is not None:
+            gm_at_min = float(np.interp(vgs_pts[0], vgs_arr, gm_arr))
+            if gm_at_min > 0:
+                scale = gm_arr[below] / gm_at_min
+                log_gds_interp[below] = np.log(np.maximum(gds_at_min * scale, 1e-30))
+            else:
+                log_gds_interp[below] = log_gds[0]
+        else:
+            # Fallback: linear extrapolation in log space using measured slope
+            slope = ((log_gds[1] - log_gds[0]) / (vgs_pts[1] - vgs_pts[0])
+                     if len(vgs_pts) >= 2 else 25.0)
+            log_gds_interp[below] = log_gds[0] + slope * (vgs_arr[below] - vgs_pts[0])
+
     return np.maximum(np.exp(log_gds_interp), 1e-15)
+
+
+def _gds_from_sweeps(vgs_gds_results):
+    """
+    Compute gds(Vgs) via lstsq regression of Id vs Vds across multiple
+    saturation-bias Vgs sweeps.  Returns a 1-D gds array at every Vgs point,
+    perfectly smooth (no interpolation artefacts).
+
+    Parameters
+    ----------
+    vgs_gds_results : list of dicts (output of run_vgs_sweeps / run_vsg_sweeps),
+                      each at a different saturation Vds value.
+
+    Returns
+    -------
+    gds : 1-D numpy array, same length as vgs_gds_results[0]['id'], clipped >= 1e-15.
+    """
+    vds_vals = np.array([float(r['vds']) for r in vgs_gds_results])
+    id_mat   = np.column_stack([r['id'] for r in vgs_gds_results])  # (n_vgs, n_vds)
+    A        = np.vstack([vds_vals, np.ones_like(vds_vals)]).T       # (n_vds, 2)
+    coeffs, _, _, _ = np.linalg.lstsq(A, id_mat.T, rcond=None)
+    return np.maximum(coeffs[0], 1e-15)   # slope row = gds at each Vgs
 
 
 def _gm_at_vg(vgs_results, vg_target, vds_target=0.9):
@@ -128,7 +175,7 @@ def _pol_labels(pol):
 # 4-panel gm/Id characterization figure
 # ─────────────────────────────────────────────────────────────────────────────
 def plot_main(vgs_results, vds_results, w_um, l_um, model='nmos180',
-              out_path=None):
+              out_path=None, vgs_gds_results=None):
     pol      = MODEL_INFO[model]['pol']
     lbl      = _pol_labels(pol)
     info     = MODEL_INFO[model]
@@ -186,6 +233,15 @@ def plot_main(vgs_results, vds_results, w_um, l_um, model='nmos180',
     ax10.legend()
 
     # ── (1,1) Intrinsic gain gm·ro vs gm/Id  (parametric in VDS) ────────────
+    # Compute gds via lstsq from dense saturation Vds sweeps (smooth, no kinks)
+    # Fall back to _gds_at_vds interpolation if dense sweeps not provided.
+    if vgs_gds_results and len(vgs_gds_results) >= 2:
+        gds_smooth = _gds_from_sweeps(vgs_gds_results)
+        # gds_smooth is indexed on the same Vgs grid as vgs_results[0]
+        ref_vgs = vgs_results[0]['vgs']
+    else:
+        gds_smooth = None
+
     from scipy.signal import medfilt
     for i, r_vgs in enumerate(vgs_results):
         c, ls   = COLORS[i % 4], LSTYLE[i % 4]
@@ -193,10 +249,18 @@ def plot_main(vgs_results, vds_results, w_um, l_um, model='nmos180',
         gmid    = r_vgs['gmid']
         gm_arr  = r_vgs['gm']
         vgs_arr = r_vgs['vgs']
-        gds     = _gds_at_vds(vds_results, vgs_arr, vds_ref)
-        gmro    = medfilt(gm_arr / gds, kernel_size=11)
-        mask    = (np.isfinite(gmro) & np.isfinite(gmid) &
-                   (gmid >= 4) & (gmid <= 24) & (gmro > 0) & (gmro < 500))
+
+        if gds_smooth is not None:
+            # Interpolate smooth gds onto this sweep's Vgs grid (grids may differ)
+            gds = np.interp(vgs_arr, ref_vgs, gds_smooth)
+            gds = np.maximum(gds, 1e-15)
+            gmro = gm_arr / gds
+        else:
+            gds  = _gds_at_vds(vds_results, vgs_arr, vds_ref, gm_arr=gm_arr)
+            gmro = medfilt(gm_arr / gds, kernel_size=11)
+
+        mask = (np.isfinite(gmro) & np.isfinite(gmid) &
+                (gmid >= 4) & (gmid <= 24) & (gmro > 0) & (gmro < 500))
         ax11.plot(gmid[mask], gmro[mask], color=c, ls=ls, lw=1.8,
                   label=f'{lbl["vds_pfx"]}{r_vgs["vds"]:.2f}V')
 
@@ -283,7 +347,7 @@ def plot_comparison(sweep_list, param_labels, polarity, title, out_path,
             c    = _COLORS_EXT[i % len(_COLORS_EXT)]
             ls   = _LSTYLE_EXT[i % len(_LSTYLE_EXT)]
             vds_ref = float(r1['vds'])
-            gds  = _gds_at_vds(vd_sweeps, r1['vgs'], vds_ref)
+            gds  = _gds_at_vds(vd_sweeps, r1['vgs'], vds_ref, gm_arr=r1['gm'])
             gmro = medfilt(r1['gm'] / gds, kernel_size=5)
             gmid = r1['gmid']
             mask = (np.isfinite(gmro) & np.isfinite(gmid) &
@@ -331,17 +395,21 @@ def plot_comparison(sweep_list, param_labels, polarity, title, out_path,
 # Gate capacitance plot
 # ─────────────────────────────────────────────────────────────────────────────
 def plot_caps(w_um, l_um, model='nmos180', vds_fixed=0.2, out_path=None):
-    info = MODEL_INFO[model]
-    pol  = info['pol']
-    vth0 = info['vth0']
-    vdd  = info.get('vdd', VDD)
-    tox  = info.get('tox', 4.1e-9)
+    info    = MODEL_INFO[model]
+    pol     = info['pol']
+    vdd     = info.get('vdd', VDD)
+    mp      = _parse_lib_params(str(info['file']), info['model_name'])
+    tox     = mp.get('tox',  4.1e-9)
+    vth0    = mp.get('vth0', 0.40)
+    cgso    = mp.get('cgso', 7.9e-10)
+    cgdo    = mp.get('cgdo', 7.9e-10)
+    nch     = mp.get('nch',  2.35e17) * 1e6
 
     vgs = np.linspace(0, vdd, 500)
     cgs, cgd, cgb, cgg = compute_caps(vgs, vds_fixed, w_um, l_um,
                                        vth=vth0,
-                                       cgso=info['cgso'], cgdo=info['cgdo'],
-                                       nch=info['nch'], tox=tox)
+                                       cgso=cgso, cgdo=cgdo,
+                                       nch=nch, tox=tox)
 
     fig, ax = plt.subplots(figsize=(7, 5))
     for (y, ls, lbl_), c in zip(
@@ -386,18 +454,22 @@ def plot_caps_comparison(node_configs, polarity='nmos', out_path=None):
     axes_flat = axes.flat
 
     for ax, (model, w_um, l_um) in zip(axes_flat, node_configs[:4]):
-        info = MODEL_INFO[model]
-        pol  = info['pol']
-        vth0 = info['vth0']
-        vdd  = info.get('vdd', VDD)
-        tox  = info.get('tox', 4.1e-9)
+        info  = MODEL_INFO[model]
+        pol   = info['pol']
+        vdd   = info.get('vdd', VDD)
+        mp    = _parse_lib_params(str(info['file']), info['model_name'])
+        tox   = mp.get('tox',  4.1e-9)
+        vth0  = mp.get('vth0', 0.40)
+        cgso  = mp.get('cgso', 7.9e-10)
+        cgdo  = mp.get('cgdo', 7.9e-10)
+        nch   = mp.get('nch',  2.35e17) * 1e6
         vds_fixed = vdd * 0.3
 
         vgs = np.linspace(0, vdd, 500)
         cgs, cgd, cgb, cgg = compute_caps(vgs, vds_fixed, w_um, l_um,
                                            vth=vth0,
-                                           cgso=info['cgso'], cgdo=info['cgdo'],
-                                           nch=info['nch'], tox=tox)
+                                           cgso=cgso, cgdo=cgdo,
+                                           nch=nch, tox=tox)
 
         for (y, ls, lbl_), c in zip(
                 [(cgg*1e15, 'solid',  '$C_{gg}$'),

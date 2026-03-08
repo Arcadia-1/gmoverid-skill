@@ -17,7 +17,7 @@ assets/
 ├── run_multinode.py       — 多节点编排（45/22nm HP）
 ├── design_gmoverid.py     — GmIdTable 查表/定尺寸 API + print_op()
 ├── models/                — 内置 PTM 模型文件（开箱即用）
-│   ├── nmos180.lib        — 180nm BSIM3v3（SVT/LVT/HVT，VDD=1.8V）
+│   ├── nmos180.lib        — 180nm BSIM3v3（VDD=1.8V）
 │   ├── pmos180.lib
 │   ├── nmos45hp.lib       — 45nm HP BSIM4（VDD=1.0V）
 │   ├── pmos45hp.lib
@@ -30,7 +30,7 @@ assets/
     └── gmoverid_pmos_vsd.cir.tmpl  — PMOS |Vsd| 扫描（固定 |Vsg|）
 ```
 
-内置模型来自 [PTM (mec.umn.edu/ptm)](https://mec.umn.edu/ptm)，免费用于学术研究。如需其他节点（32nm、16nm、LP 变体、PTM-MG FinFET），可安装 `transistor-models` skill 或自行从 PTM 网站下载，复制到项目 `models/` 目录。
+内置模型来自 [PTM — Arizona State University (ptm.asu.edu)](https://ptm.asu.edu)，免费用于学术研究。如需引用，请使用：W. Zhao and Y. Cao, "New Generation of Predictive Technology Model for Sub-45 nm Early Design Exploration," *IEEE Trans. Electron Devices*, vol. 53, no. 11, pp. 2816–2823, Nov. 2006. doi: 10.1109/TED.2006.884077。如需其他节点（65nm、90nm、130nm、32nm LP、PTM-MG FinFET 等），可安装 `transistor-models` skill（原始 PTM 文件，需自行配置 MODEL_INFO）或从 [mec.umn.edu/ptm](https://mec.umn.edu/ptm) 下载，复制到项目 `models/` 目录。
 
 ---
 
@@ -73,7 +73,7 @@ assets/
 
 ### 新增工艺节点
 
-1. 将模型 `.lib` 复制到 `models/`（可从 [mec.umn.edu/ptm](https://mec.umn.edu/ptm) 下载，或安装 `transistor-models` skill）
+1. 将模型 `.lib` 复制到 `models/`（可从 [mec.umn.edu/ptm](https://mec.umn.edu/ptm) 下载或安装 `transistor-models` skill）
 2. 在 `simulate_gmoverid.py` 的 `MODEL_INFO` 新增条目（见 conventions.md §3）
 3. 在 `run_multinode.py` 的 `NODE_CFG` 新增条目
 

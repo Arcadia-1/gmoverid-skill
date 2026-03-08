@@ -3,25 +3,19 @@
 run_multinode.py
 ================
 gm/Id characterization across technology nodes:
-  45nm HP  (VDD=1.0V) — closest to "40nm"
-  32nm HP  (VDD=0.9V) — closest to "28nm"
+  45nm HP  (VDD=1.0V)
   22nm HP  (VDD=0.8V)
-  16nm HP  (VDD=0.7V)
 
 All models use PTM BSIM4 (level=54).
 
 Output figures (saved to plots/)
 ----------------------------------
-  gmoverid_nmos45hp_L45nm.png    NMOS 45nm HP  6-panel full characterization
-  gmoverid_pmos45hp_L45nm.png    PMOS 45nm HP  6-panel full characterization
-  gmoverid_nmos32hp_L32nm.png    NMOS 32nm HP  6-panel full characterization
-  gmoverid_pmos32hp_L32nm.png    PMOS 32nm HP  6-panel full characterization
-  gmoverid_nmos22hp_L22nm.png    NMOS 22nm HP  6-panel full characterization
-  gmoverid_pmos22hp_L22nm.png    PMOS 22nm HP  6-panel full characterization
-  gmoverid_nmos16hp_L16nm.png    NMOS 16nm HP  6-panel full characterization
-  gmoverid_pmos16hp_L16nm.png    PMOS 16nm HP  6-panel full characterization
-  gmid_nmos_node_comp.png        NMOS 4-panel comparison: 180/45/32/22/16nm
-  gmid_pmos_node_comp.png        PMOS 4-panel comparison: 180/45/32/22/16nm
+  gmoverid_nmos45hp_L45nm.png    NMOS 45nm HP  4-panel full characterization
+  gmoverid_pmos45hp_L45nm.png    PMOS 45nm HP  4-panel full characterization
+  gmoverid_nmos22hp_L22nm.png    NMOS 22nm HP  4-panel full characterization
+  gmoverid_pmos22hp_L22nm.png    PMOS 22nm HP  4-panel full characterization
+  gmid_nmos_node_comp.png        NMOS 4-panel comparison: 180/45/22nm
+  gmid_pmos_node_comp.png        PMOS 4-panel comparison: 180/45/22nm
 """
 
 import sys
@@ -54,17 +48,6 @@ NODE_CFG = {
         vgs_iv   =[0.4, 0.5, 0.6, 0.7, 0.8],
         w_iv=0.45,         # W/L=10
     ),
-    '32nm': dict(
-        nmos='nmos32hp',   pmos='pmos32hp',
-        l_nm=32,           l_um=0.032,
-        W=1.0,
-        vdd=0.9,
-        vds_list =[0.05, 0.25, 0.45, 0.9],
-        vgs_bias =[0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90],
-        vds_comp =[0.45],
-        vgs_iv   =[0.35, 0.45, 0.55, 0.65, 0.75],
-        w_iv=0.32,         # W/L=10
-    ),
     '22nm': dict(
         nmos='nmos22hp',   pmos='pmos22hp',
         l_nm=22,           l_um=0.022,
@@ -75,17 +58,6 @@ NODE_CFG = {
         vds_comp =[0.4],
         vgs_iv   =[0.3, 0.4, 0.5, 0.6, 0.7],
         w_iv=0.22,         # W/L=10
-    ),
-    '16nm': dict(
-        nmos='nmos16hp',   pmos='pmos16hp',
-        l_nm=16,           l_um=0.016,
-        W=1.0,
-        vdd=0.7,
-        vds_list =[0.1, 0.2, 0.3, 0.4],
-        vgs_bias =[0.10, 0.18, 0.26, 0.35, 0.43, 0.51, 0.59, 0.67],
-        vds_comp =[0.35],
-        vgs_iv   =[0.25, 0.35, 0.45, 0.55, 0.65],
-        w_iv=0.16,         # W/L=10
     ),
 }
 
@@ -125,7 +97,7 @@ def _run_comp(cfg, polarity):
 def main():
     print('=' * 66)
     print('  PTM Multi-Node gm/Id Characterization')
-    print('  Nodes: 45nm / 32nm / 22nm / 16nm  (HP BSIM4)')
+    print('  Nodes: 45nm / 22nm  (HP BSIM4)')
     print('=' * 66)
 
     nmos_comp_data = {}   # {node_label: (vg_comp, vd_sweeps)} for cross-node plot

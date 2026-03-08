@@ -5,63 +5,88 @@ description: "完整 PTM（Predictive Technology Model）MOSFET 模型库，直�
 
 # Transistor Models Skill — 完整 PTM 库
 
-**来源**：所有模型文件直接来自 [mec.umn.edu/ptm](https://mec.umn.edu/ptm)，免费用于学术研究。
+**来源**：所有模型文件直接来自 [PTM — Arizona State University (ptm.asu.edu)](https://ptm.asu.edu)，免费用于学术研究。
+
+**引用文献**：
+- 体硅节点（Bulk CMOS）：W. Zhao and Y. Cao, "New Generation of Predictive Technology Model for Sub-45 nm Early Design Exploration," *IEEE Trans. Electron Devices*, vol. 53, no. 11, pp. 2816–2823, Nov. 2006. doi: 10.1109/TED.2006.884077
+- PTM-MG FinFET 节点：S. Sinha, G. Yeric, V. Chandra, B. Cline and Y. Cao, "Exploring sub-20nm FinFET design with Predictive Technology Models," *DAC 2012*, pp. 283–288. doi: 10.1145/2228360.2228414
+
+---
+
+## 目录结构
+
+```
+assets/models/
+├── bulk_cmos/              — 体硅 Bulk CMOS（BSIM3v3 / BSIM4）
+│   ├── ptm180.lib          — 180nm 传统
+│   ├── ptm130.lib          — 130nm 传统
+│   ├── ptm90.lib           — 90nm 传统
+│   ├── ptm65.lib           — 65nm 传统
+│   ├── ptm45hp.lib         — 45nm HP
+│   ├── ptm45lp.lib         — 45nm LP
+│   ├── ptm32hp.lib         — 32nm HP
+│   ├── ptm32lp.lib         — 32nm LP
+│   ├── ptm22hp.lib         — 22nm HP
+│   └── ptm22lp.lib         — 22nm LP
+└── finfet/
+    ├── models              — PTM-MG 库入口（.LIB ptm{n}hp / ptm{n}lstp）
+    ├── param.inc           — 共享参数（fin_height/fin_width/lg/vdd，按节点分 lib）
+    ├── hp/                 — HP 节点：{7,10,14,16,20}nfet.pm / pfet.pm
+    └── lstp/               — LSTP 节点：{7,10,14,16,20}nfet.pm / pfet.pm
+```
 
 ---
 
 ## 模型库一览
 
-### 体硅传统 BSIM4（LEVEL=54）— combined NMOS+PMOS
+### Bulk CMOS — 体硅传统（BSIM3v3/BSIM4，combined NMOS+PMOS）
 
 | 文件 | 节点 | VDD | 模型名 |
 |------|------|-----|--------|
-| `ptm65.lib`  | 65nm  | 1.1V | `nmos` / `pmos` |
-| `ptm90.lib`  | 90nm  | 1.2V | `nmos` / `pmos` |
-| `ptm130.lib` | 130nm | 1.3V | `nmos` / `pmos` |
-| `ptm180.lib` | 180nm | 1.8V | `NMOS` / `PMOS` |
+| `bulk_cmos/ptm180.lib` | 180nm | 1.8V | `NMOS` / `PMOS` |
+| `bulk_cmos/ptm130.lib` | 130nm | 1.3V | `nmos` / `pmos` |
+| `bulk_cmos/ptm90.lib`  | 90nm  | 1.2V | `nmos` / `pmos` |
+| `bulk_cmos/ptm65.lib`  | 65nm  | 1.1V | `nmos` / `pmos` |
 
-### 体硅 HP/LP BSIM4（LEVEL=54）— combined NMOS+PMOS
+### Bulk CMOS — 体硅 HP/LP（BSIM4，combined NMOS+PMOS）
 
 | 文件 | 节点 | 类型 | VDD | 模型名 |
 |------|------|------|-----|--------|
-| `ptm45hp.lib` | 45nm | HP | 1.0V | `nmos` / `pmos` |
-| `ptm45lp.lib` | 45nm | LP | 1.1V | `nmos` / `pmos` |
-| `ptm32hp.lib` | 32nm | HP | 0.9V | `nmos` / `pmos` |
-| `ptm32lp.lib` | 32nm | LP | 1.0V | `nmos` / `pmos` |
-| `ptm22hp.lib` | 22nm | HP | 0.8V | `nmos` / `pmos` |
-| `ptm22lp.lib` | 22nm | LP | 1.0V | `nmos` / `pmos` |
+| `bulk_cmos/ptm45hp.lib` | 45nm | HP | 1.0V | `nmos` / `pmos` |
+| `bulk_cmos/ptm45lp.lib` | 45nm | LP | 1.1V | `nmos` / `pmos` |
+| `bulk_cmos/ptm32hp.lib` | 32nm | HP | 0.9V | `nmos` / `pmos` |
+| `bulk_cmos/ptm32lp.lib` | 32nm | LP | 1.0V | `nmos` / `pmos` |
+| `bulk_cmos/ptm22hp.lib` | 22nm | HP | 0.8V | `nmos` / `pmos` |
+| `bulk_cmos/ptm22lp.lib` | 22nm | LP | 1.0V | `nmos` / `pmos` |
 
-### PTM-MG 多栅 FinFET BSIM-CMG（HP + LSTP）— 独立 NMOS/PMOS 文件
+### FinFET — PTM-MG 多栅（BSIM-CMG）
 
-| 节点 | HP NMOS | HP PMOS | LSTP NMOS | LSTP PMOS |
-|------|---------|---------|-----------|-----------|
-| 20nm | `nmos20mg_hp.lib` | `pmos20mg_hp.lib` | `nmos20mg_lstp.lib` | `pmos20mg_lstp.lib` |
-| 16nm | `nmos16mg_hp.lib` | `pmos16mg_hp.lib` | `nmos16mg_lstp.lib` | `pmos16mg_lstp.lib` |
-| 14nm | `nmos14mg_hp.lib` | `pmos14mg_hp.lib` | `nmos14mg_lstp.lib` | `pmos14mg_lstp.lib` |
-| 10nm | `nmos10mg_hp.lib` | `pmos10mg_hp.lib` | `nmos10mg_lstp.lib` | `pmos10mg_lstp.lib` |
-|  7nm | `nmos7mg_hp.lib`  | `pmos7mg_hp.lib`  | `nmos7mg_lstp.lib`  | `pmos7mg_lstp.lib`  |
+入口文件：`finfet/models`，通过 `.lib` 标签选择节点和类型：
 
-PTM-MG 文件中模型名为 `nfet`（NMOS）/ `pfet`（PMOS），BSIM-CMG 格式，需 ngspice LEVEL=72。
+| 标签 | 节点 | 类型 | VDD |
+|------|------|------|-----|
+| `ptm20hp`   | 20nm | HP   | 0.9V |
+| `ptm16hp`   | 16nm | HP   | 0.85V |
+| `ptm14hp`   | 14nm | HP   | 0.8V |
+| `ptm10hp`   | 10nm | HP   | 0.75V |
+| `ptm7hp`    |  7nm | HP   | 0.7V |
+| `ptm20lstp` | 20nm | LSTP | 0.9V |
+| `ptm16lstp` | 16nm | LSTP | 0.85V |
+| `ptm14lstp` | 14nm | LSTP | 0.8V |
+| `ptm10lstp` | 10nm | LSTP | 0.75V |
+| `ptm7lstp`  |  7nm | LSTP | 0.7V |
 
-### ngspice 格式化文件（描述性模型名，供 gmoverid 集成）
-
-| 文件 | 节点 | 模型名 |
-|------|------|--------|
-| `nmos180.lib` / `pmos180.lib` | 180nm | `nmos180` / `pmos180` |
-| `nmos45hp.lib` / `pmos45hp.lib` | 45nm HP | `nmos45hp` / `pmos45hp` |
-| `nmos22hp.lib` / `pmos22hp.lib` | 22nm HP | `nmos22hp` / `pmos22hp` |
-
-这组文件已预配置 ngspice，可直接与 `gmoverid` skill 配合使用。
+FinFET 模型名为 `nfet` / `pfet`，通过 subckt 封装，NFIN 控制鳍片数。
 
 ---
 
 ## ngspice 使用方法
 
-### 加载 combined 文件（体硅节点）
+### 加载 Bulk CMOS 文件
 
 ```spice
 * 加载 45nm HP（含 nmos 和 pmos 两个模型）
-.include "models/ptm45hp.lib"
+.include "models/bulk_cmos/ptm45hp.lib"
 
 * 实例化 NMOS
 M1  drain  gate  source  bulk  nmos  W=1u  L=45n
@@ -71,19 +96,12 @@ M1  drain  gate  source  bulk  nmos  W=1u  L=45n
 
 ```spice
 * 加载 7nm HP FinFET
-.include "models/nmos7mg_hp.lib"
-.include "models/pmos7mg_hp.lib"
+.include "models/finfet/nmos7mg_hp.lib"
+.include "models/finfet/pmos7mg_hp.lib"
 
 * PTM-MG 模型名为 nfet / pfet
 * 注意：PTM-MG 使用 NFIN（鳍片数）代替 W
 M1  drain  gate  source  bulk  nfet  NFIN=1  L=7n
-```
-
-### 加载格式化文件（gmoverid 风格）
-
-```spice
-.include "models/nmos180.lib"
-M1  d  g  s  b  nmos180  W=10u  L=180n
 ```
 
 ---

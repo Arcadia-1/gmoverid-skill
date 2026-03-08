@@ -5,3 +5,14 @@ __pycache__/
   plots/
   .DS_Store
   Thumbs.db
+
+
+reference/
+logs/
+models/
+plots/
+netlist/
+trained_models/
+CLAUDE.md
+*.py
+验收标准.md
