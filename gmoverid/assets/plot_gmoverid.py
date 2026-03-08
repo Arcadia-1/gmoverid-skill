@@ -33,7 +33,7 @@ import matplotlib.ticker as mticker
 import numpy as np
 from pathlib import Path
 
-from simulate_gmoverid import (COX, MODEL_INFO, VDD, VDS_STOP,
+from simulate_gmoverid import (MODEL_INFO, VDD, VDS_STOP,
                                 compute_caps, W_UM, L_UM,
                                 _parse_lib_params)
 
@@ -291,7 +291,7 @@ def plot_main(vgs_results, vds_results, w_um, l_um, model='nmos180',
 # 4-panel comparison figure (L sweep or Vth sweep)
 # ─────────────────────────────────────────────────────────────────────────────
 def plot_comparison(sweep_list, param_labels, polarity, title, out_path,
-                    vds_list=None):
+                    vds_list=None, vgs_gds_list=None):
     """
     Parameters
     ----------
@@ -338,7 +338,6 @@ def plot_comparison(sweep_list, param_labels, polarity, title, out_path,
     # one list per curve.  gds is extracted at the primary Vds via interpolation
     # over many Vgs bias points — numerically stable for HVT and long channel.
     if vds_list:
-        from scipy.signal import medfilt
         for i, (vgs_res, vd_sweeps, lab) in enumerate(
                 zip(sweep_list, vds_list, param_labels)):
             if not vgs_res or not vd_sweeps:
@@ -347,9 +346,21 @@ def plot_comparison(sweep_list, param_labels, polarity, title, out_path,
             c    = _COLORS_EXT[i % len(_COLORS_EXT)]
             ls   = _LSTYLE_EXT[i % len(_LSTYLE_EXT)]
             vds_ref = float(r1['vds'])
-            gds  = _gds_at_vds(vd_sweeps, r1['vgs'], vds_ref, gm_arr=r1['gm'])
-            gmro = medfilt(r1['gm'] / gds, kernel_size=5)
             gmid = r1['gmid']
+
+            vgs_gds = (vgs_gds_list[i]
+                       if (vgs_gds_list and i < len(vgs_gds_list) and vgs_gds_list[i])
+                       else None)
+            if vgs_gds and len(vgs_gds) >= 2:
+                gds_smooth = _gds_from_sweeps(vgs_gds)
+                gds = np.interp(r1['vgs'], vgs_gds[0]['vgs'], gds_smooth)
+                gds = np.maximum(gds, 1e-15)
+                gmro = r1['gm'] / gds
+            else:
+                from scipy.signal import medfilt
+                gds  = _gds_at_vds(vd_sweeps, r1['vgs'], vds_ref, gm_arr=r1['gm'])
+                gmro = medfilt(r1['gm'] / gds, kernel_size=5)
+
             mask = (np.isfinite(gmro) & np.isfinite(gmid) &
                     (gmid >= 4) & (gmid <= 24) & (gmro > 0) & (gmro < 300))
             ax11_.plot(gmid[mask], gmro[mask], color=c, ls=ls, lw=2.0, label=lab)
@@ -446,14 +457,15 @@ def plot_caps_comparison(node_configs, polarity='nmos', out_path=None):
     """
     Parameters
     ----------
-    node_configs : list of (model, w_um, l_um) tuples, up to 4 entries.
+    node_configs : list of (model, w_um, l_um) tuples.
     polarity     : 'nmos' | 'pmos'  — used only for axis labels/title.
     out_path     : output PNG path.
     """
-    fig, axes = plt.subplots(2, 2, figsize=(12, 9))
-    axes_flat = axes.flat
+    n = len(node_configs)
+    fig, axes = plt.subplots(1, n, figsize=(5.5 * n, 5.5))
+    axes_flat = list(axes) if n > 1 else [axes]
 
-    for ax, (model, w_um, l_um) in zip(axes_flat, node_configs[:4]):
+    for ax, (model, w_um, l_um) in zip(axes_flat, node_configs):
         info  = MODEL_INFO[model]
         pol   = info['pol']
         vdd   = info.get('vdd', VDD)

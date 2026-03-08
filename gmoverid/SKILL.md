@@ -79,6 +79,28 @@ assets/
 
 ---
 
+## 绘图规范（新建图时须遵守）
+
+> 为新项目生成图件或在设计报告中绘图时，须与本 skill 已有图件风格一致。
+
+**格式要求：**
+- 不得调用 `plt.show()`，统一使用 `fig.savefig(path, dpi=150, bbox_inches='tight')`；图件保存至 `plots/`
+- 颜色与线型按 `plot_gmoverid.py` 中的 `COLORS`/`LSTYLE` 列表依次取用（蓝实线、橙虚线、绿点划线、紫点线）
+- X 轴若为 gm/ID，统一 `xlim=[4, 24]`，每 2 V⁻¹ 一刻度；Y 轴 `ylim(bottom=0)`
+- 图题与轴标签用 **ASCII + LaTeX**（如 `$g_m/I_D$`），**不要在 matplotlib 标签中直接写中文字符**
+- **`µ`（U+00B5）在部分终端和字体下显示失败**，轴标签中一律用 `u` 替代（如 `uA/um`、`W=10um`），或用 LaTeX `$\\mu$`；除非用户明确要求才使用 Unicode µ
+
+**中文字体警告：**
+matplotlib 默认不含中文字体，直接写中文会显示方框（□□）。如确需中文，在脚本顶部添加：
+```python
+import matplotlib
+matplotlib.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'DejaVu Sans']
+matplotlib.rcParams['axes.unicode_minus'] = False
+```
+Windows 优先用 `Microsoft YaHei`；Linux/macOS 需确认系统已安装对应字体，否则仍显示方框。**最稳妥的方案是仅用 ASCII/LaTeX 标签，彻底规避字体依赖。**
+
+---
+
 ## 工作流二：设计（查表定尺寸）
 
 ### 核心类：`GmIdTable`
@@ -169,6 +191,45 @@ model, L_um, W_um, Id_A, Vgs_V, Vov_V, gmid, gm_S, ft_Hz, gmro, id_w_Apm
 | 10–12 | 20–29 | 15–18 | 39    | OTA 输出级、驱动器 |
 | 13–16 | 8–17  |  9–13 | 39–46 | OTA 输入差分对（平衡） |
 | 18–20 |  3–6  |  4–6  | 53    | 低功耗模拟级、基准 |
+
+---
+
+## 设计注意：输出阻抗与本征增益
+
+gm/ID 方法论不只是定 W——**输出阻抗 ro = 1/gds 直接决定电路增益，必须在定尺寸时同步核查。**
+
+### 各工艺节点 gm·ro 经验值
+
+| 工艺节点 | gm·ro 典型范围 | 说明 |
+|----------|:--------------:|------|
+| 180nm SVT | 40–55 | gm/ID ≈ 10–20 区间；长沟道 CLM 弱，增益高 |
+| 45nm HP   |  6–10 | 短沟道效应显著；gm/ID ≈ 5–10 时约 7–10 |
+| 22nm HP   |  3–4  | CLM+DIBL 极强；全 gm/ID 范围内几乎平坦 |
+
+> 数据来自本 skill 内置 PTM 模型的 ngspice 仿真，与 `tbl.lookup('gmro', gmid)` 返回值一致。
+
+### 设计时的判断规则
+
+1. **先查 gmro 再定拓扑**：调用 `tbl.lookup('gmro', gmid_target)` 确认当前工艺/偏置点的本征增益；22nm HP 单管增益仅 3–4，直接用单级共源无法驱动高增益负载。
+
+2. **增益不够时的选项**：
+   - **共源共栅（cascode）**：gm·ro 可提升至 (gm·ro)²/2 量级，但 22nm VDD=0.8V 下叠管裕度极小（Vdsat 约 0.1–0.2V），需仔细核查 Vds 余量
+   - **增大沟道长度**：`L` 从 min → 2×min，gm·ro 可提升约 2–4×，但 fT 相应降低
+   - **多级拓扑**：两级 Miller 补偿等；注意每级的 ro 负载
+
+3. **ro 作为负载时**：当晶体管漏端接另一支路的 ro 时，有效增益 = gm × (ro_n ∥ ro_p)，PMOS 负载的 ro 同样需通过 `GmIdTable` 核查。
+
+4. **size_from_gmro() 的使用**：当增益规格明确时，优先用约束定尺寸：
+   ```python
+   # 要求 gm·ro ≥ 30，固定 Id = 50µA（180nm 有效；22nm/45nm HP 中此目标不可达）
+   op = tbl.size_from_gmro(30, Id=50e-6)
+
+   # 先验证目标是否可达
+   max_gmro = max(tbl.lookup('gmro', g) for g in range(4, 25))
+   print(f'Max achievable gm·ro = {max_gmro:.1f}')
+   ```
+
+5. **22nm/45nm HP 下的务实建议**：单级增益 3–8，如需 OTA 增益 > 40 dB（×100），必须使用两级或套筒式/折叠式共源共栅拓扑，设计前通过 `lookup('gmro', ...)` 做初步可行性评估。
 
 ---
 

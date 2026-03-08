@@ -42,7 +42,8 @@ NODE_CFG = {
         l_nm=45,           l_um=0.045,
         W=1.0,
         vdd=1.0,
-        vds_list =[0.05, 0.3, 0.5, 1.0],
+        vds_list =[0.2, 0.3, 0.4],
+        vds_gds  =[0.4, 0.5, 0.6, 0.7, 0.8, 1.0],  # saturation Vds for lstsq gds
         vgs_bias =[0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95],
         vds_comp =[0.5],
         vgs_iv   =[0.4, 0.5, 0.6, 0.7, 0.8],
@@ -53,7 +54,8 @@ NODE_CFG = {
         l_nm=22,           l_um=0.022,
         W=1.0,
         vdd=0.8,
-        vds_list =[0.04, 0.2,  0.4,  0.8],
+        vds_list =[0.2, 0.3, 0.4],
+        vds_gds  =[0.3, 0.4, 0.5, 0.6, 0.7, 0.8],  # saturation Vds for lstsq gds
         vgs_bias =[0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80],
         vds_comp =[0.4],
         vgs_iv   =[0.3, 0.4, 0.5, 0.6, 0.7],
@@ -70,12 +72,14 @@ def _run_full(cfg, polarity):
     W      = cfg['W']
     l_um   = cfg['l_um']
     if polarity == 'nmos':
-        vg = run_vgs_sweeps(W, l_um, model=model, vds_list=cfg['vds_list'])
-        vd = run_vds_sweeps(W, l_um, model=model, vgs_bias_list=cfg['vgs_bias'])
+        vg     = run_vgs_sweeps(W, l_um, model=model, vds_list=cfg['vds_list'])
+        vd     = run_vds_sweeps(W, l_um, model=model, vgs_bias_list=cfg['vgs_bias'])
+        vg_gds = run_vgs_sweeps(W, l_um, model=model, vds_list=cfg['vds_gds'])
     else:
-        vg = run_vsg_sweeps(W, l_um, model=model, vsd_list=cfg['vds_list'])
-        vd = run_vsd_sweeps(W, l_um, model=model, vsg_bias_list=cfg['vgs_bias'])
-    return vg, vd
+        vg     = run_vsg_sweeps(W, l_um, model=model, vsd_list=cfg['vds_list'])
+        vd     = run_vsd_sweeps(W, l_um, model=model, vsg_bias_list=cfg['vgs_bias'])
+        vg_gds = run_vsg_sweeps(W, l_um, model=model, vsd_list=cfg['vds_gds'])
+    return vg, vd, vg_gds
 
 
 def _run_comp(cfg, polarity):
@@ -83,12 +87,14 @@ def _run_comp(cfg, polarity):
     W      = cfg['W']
     l_um   = cfg['l_um']
     if polarity == 'nmos':
-        vg = run_vgs_sweeps(W, l_um, model=model, vds_list=cfg['vds_comp'])
-        vd = run_vds_sweeps(W, l_um, model=model, vgs_bias_list=cfg['vgs_bias'])
+        vg     = run_vgs_sweeps(W, l_um, model=model, vds_list=cfg['vds_comp'])
+        vd     = run_vds_sweeps(W, l_um, model=model, vgs_bias_list=cfg['vgs_bias'])
+        vg_gds = run_vgs_sweeps(W, l_um, model=model, vds_list=cfg['vds_gds'])
     else:
-        vg = run_vsg_sweeps(W, l_um, model=model, vsd_list=cfg['vds_comp'])
-        vd = run_vsd_sweeps(W, l_um, model=model, vsg_bias_list=cfg['vgs_bias'])
-    return vg, vd
+        vg     = run_vsg_sweeps(W, l_um, model=model, vsd_list=cfg['vds_comp'])
+        vd     = run_vsd_sweeps(W, l_um, model=model, vsg_bias_list=cfg['vgs_bias'])
+        vg_gds = run_vsg_sweeps(W, l_um, model=model, vsd_list=cfg['vds_gds'])
+    return vg, vd, vg_gds
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -120,11 +126,12 @@ def main():
 
         # ── NMOS full characterization ────────────────────────────────────
         print(f'\n  [{node}] NMOS full sweep ...')
-        nmos_vg, nmos_vd = _run_full(cfg, 'nmos')
+        nmos_vg, nmos_vd, nmos_vg_gds = _run_full(cfg, 'nmos')
         if not nmos_vg:
             print(f'  [ERROR] {node} NMOS sweep failed, skipping.'); continue
         plot_main(nmos_vg, nmos_vd, W, l_um, nm,
-                  node_dir / f'gmoverid_{nm}_L{l_nm}nm.png')
+                  node_dir / f'gmoverid_{nm}_L{l_nm}nm.png',
+                  vgs_gds_results=nmos_vg_gds)
         plot_caps(W, l_um, nm,
                   out_path=node_dir / f'gmoverid_caps_{nm}_L{l_nm}nm.png')
         print_summary(nmos_vg, nmos_vd, nm)
@@ -136,10 +143,11 @@ def main():
 
         # ── PMOS full characterization ────────────────────────────────────
         print(f'\n  [{node}] PMOS full sweep ...')
-        pmos_vg, pmos_vd = _run_full(cfg, 'pmos')
+        pmos_vg, pmos_vd, pmos_vg_gds = _run_full(cfg, 'pmos')
         if pmos_vg:
             plot_main(pmos_vg, pmos_vd, W, l_um, pm,
-                      node_dir / f'gmoverid_{pm}_L{l_nm}nm.png')
+                      node_dir / f'gmoverid_{pm}_L{l_nm}nm.png',
+                      vgs_gds_results=pmos_vg_gds)
             plot_caps(W, l_um, pm,
                       out_path=node_dir / f'gmoverid_caps_{pm}_L{l_nm}nm.png')
             print_summary(pmos_vg, pmos_vd, pm)
@@ -160,24 +168,29 @@ def main():
     print('\n  Collecting 180nm reference data for cross-node comparison ...')
     _W180  = 10.0;  _L180 = 0.18
     _VGS180 = [0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00, 1.10]
-    n180_c  = run_vgs_sweeps(_W180, _L180, model='nmos180', vds_list=[0.9])
-    n180_vd = run_vds_sweeps(_W180, _L180, model='nmos180', vgs_bias_list=_VGS180)
-    p180_c  = run_vsg_sweeps(_W180, _L180, model='pmos180', vsd_list=[0.9])
-    p180_vd = run_vsd_sweeps(_W180, _L180, model='pmos180', vsg_bias_list=_VGS180)
+    _VDS_GDS_180 = [0.5, 0.7, 0.9, 1.1, 1.3, 1.5]
+    n180_c   = run_vgs_sweeps(_W180, _L180, model='nmos180', vds_list=[0.9])
+    n180_vd  = run_vds_sweeps(_W180, _L180, model='nmos180', vgs_bias_list=_VGS180)
+    n180_gds = run_vgs_sweeps(_W180, _L180, model='nmos180', vds_list=_VDS_GDS_180)
+    p180_c   = run_vsg_sweeps(_W180, _L180, model='pmos180', vsd_list=[0.9])
+    p180_vd  = run_vsd_sweeps(_W180, _L180, model='pmos180', vsg_bias_list=_VGS180)
+    p180_gds = run_vsg_sweeps(_W180, _L180, model='pmos180', vsd_list=_VDS_GDS_180)
 
     # ── NMOS cross-node comparison plot ──────────────────────────────────
     print('\n  Generating NMOS cross-node comparison ...')
-    n_sweeps, n_vd_sweeps, n_labels = [], [], []
-    n_sweeps.append(n180_c);  n_vd_sweeps.append(n180_vd);  n_labels.append('180nm SVT')
+    n_sweeps, n_vd_sweeps, n_gds_sweeps, n_labels = [], [], [], []
+    n_sweeps.append(n180_c);  n_vd_sweeps.append(n180_vd)
+    n_gds_sweeps.append(n180_gds);  n_labels.append('180nm SVT')
     for node in NODE_CFG:
         if node in nmos_comp_data:
-            vg, vd = nmos_comp_data[node]
+            vg, vd, vg_gds = nmos_comp_data[node]
             n_sweeps.append(vg);  n_vd_sweeps.append(vd)
-            n_labels.append(f'{node} HP')
+            n_gds_sweeps.append(vg_gds);  n_labels.append(f'{node} HP')
 
     plot_comparison(
         sweep_list   = n_sweeps,
         vds_list     = n_vd_sweeps,
+        vgs_gds_list = n_gds_sweeps,
         param_labels = n_labels,
         polarity     = 'nmos',
         title        = 'NMOS Node Comparison  (PTM, SVT/HP, L=min)',
@@ -186,29 +199,31 @@ def main():
 
     # ── PMOS cross-node comparison plot ──────────────────────────────────
     print('\n  Generating PMOS cross-node comparison ...')
-    p_sweeps, p_vd_sweeps, p_labels = [], [], []
-    p_sweeps.append(p180_c);  p_vd_sweeps.append(p180_vd);  p_labels.append('180nm SVT')
+    p_sweeps, p_vd_sweeps, p_gds_sweeps, p_labels = [], [], [], []
+    p_sweeps.append(p180_c);  p_vd_sweeps.append(p180_vd)
+    p_gds_sweeps.append(p180_gds);  p_labels.append('180nm SVT')
     for node in NODE_CFG:
         if node in pmos_comp_data:
-            vg, vd = pmos_comp_data[node]
+            vg, vd, vg_gds = pmos_comp_data[node]
             p_sweeps.append(vg);  p_vd_sweeps.append(vd)
-            p_labels.append(f'{node} HP')
+            p_gds_sweeps.append(vg_gds);  p_labels.append(f'{node} HP')
 
     plot_comparison(
         sweep_list   = p_sweeps,
         vds_list     = p_vd_sweeps,
+        vgs_gds_list = p_gds_sweeps,
         param_labels = p_labels,
         polarity     = 'pmos',
         title        = 'PMOS Node Comparison  (PTM, SVT/HP, L=min)',
         out_path     = PLOT_DIR / 'gmid_pmos_node_comp.png',
     )
 
-    # ── Combined capacitance comparison: 4 HP nodes ──────────────────────
+    # ── Combined capacitance comparison: 180nm + HP nodes ────────────────
     print('\n  Generating capacitance comparison figures ...')
-    nmos_caps_cfg = [(cfg['nmos'], cfg['W'], cfg['l_um'])
-                     for cfg in NODE_CFG.values()]
-    pmos_caps_cfg = [(cfg['pmos'], cfg['W'], cfg['l_um'])
-                     for cfg in NODE_CFG.values()]
+    nmos_caps_cfg = [('nmos180', 10.0, 0.18)] + [
+        (cfg['nmos'], cfg['W'], cfg['l_um']) for cfg in NODE_CFG.values()]
+    pmos_caps_cfg = [('pmos180', 10.0, 0.18)] + [
+        (cfg['pmos'], cfg['W'], cfg['l_um']) for cfg in NODE_CFG.values()]
     plot_caps_comparison(nmos_caps_cfg, polarity='nmos',
                          out_path=PLOT_DIR / 'gmid_nmos_caps_comp.png')
     plot_caps_comparison(pmos_caps_cfg, polarity='pmos',
