@@ -1,0 +1,30 @@
+* ============================================================
+* gm/Id Characterization -- PMOS |Vsg| sweep at fixed |Vsd|
+* W = {w_um} um   L = {l_um} um   |Vsd| = fixed
+* Vg sweep: {vg_start} -> {vg_stop} V  step {vg_step} V
+* Python computes |Vsg| = VDD - Vg
+* ============================================================
+
+.include {model_path}
+
+* VDD rail (PMOS source and bulk)
+VDD  vdd   0   DC {vdd_v}
+
+* Gate: absolute DC level, swept from VDD down to 0
+Vgate gate  0   DC {vdd_v}
+
+* Drain: VD = VDD - |Vsd_fixed|  (fixed during sweep)
+Vdrain drain 0  DC {vd_v}
+
+* PMOS DUT:  D=drain  G=gate  S=vdd  B=vdd
+M1 drain gate vdd vdd {model} W={w_um}u L={l_um}u
+
+.temp 27
+
+.control
+  dc Vgate {vg_start} {vg_stop} {vg_step}
+  wrdata {dat_path} v(gate) i(Vdrain)
+  quit
+.endc
+
+.end

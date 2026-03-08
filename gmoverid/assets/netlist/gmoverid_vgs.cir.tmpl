@@ -1,0 +1,23 @@
+* ============================================================
+* gm/Id Characterization -- Vgs sweep at fixed Vds
+* W = {w_um} um   L = {l_um} um   Vds = {vds_v} V
+* Vgs sweep: {vgs_start} to {vgs_stop} V  step {vgs_step} V
+* ============================================================
+
+.include {model_path}
+
+Vgs vgs 0 DC 0
+Vds vds 0 DC {vds_v}
+
+* D=vds  G=vgs  S=0  B=0
+M1 vds vgs 0 0 {model} W={w_um}u L={l_um}u
+
+.temp 27
+
+.control
+  dc Vgs {vgs_start} {vgs_stop} {vgs_step}
+  wrdata {dat_path} v(vgs) i(Vds)
+  quit
+.endc
+
+.end

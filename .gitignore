@@ -1,0 +1,7 @@
+__pycache__/
+  *.pyc
+  *.log
+  logs/
+  plots/
+  .DS_Store
+  Thumbs.db
