@@ -1,0 +1,22 @@
+* kT/C Noise — Time-Domain Statistical Measurement
+* Noisy switch Ron = {R_val} ohm, Csamp = {C_val}
+* Thermal noise modeled via trnoise voltage source in series with R
+* Expected sigma = sqrt(kT/C) = {sigma_uv} uVrms
+
+Vin in 0 DC {Vdc}
+
+* Thermal noise source (Thevenin model of switch Ron noise)
+Vn in nr DC 0 trnoise({nt} {nt_dt} 0 0)
+
+* Switch-equivalent resistance (noiseless — noise comes from Vn)
+R1 nr out {R_val}
+
+* Sampling capacitor
+C1 out 0 {C_val}
+
+.control
+tran {tstep} {tstop} UIC
+wrdata {wrdata_path} v(out)
+.endc
+
+.end

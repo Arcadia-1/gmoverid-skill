@@ -1,0 +1,30 @@
+* Transmission Gate Ron vs Pass Voltage
+* {label}
+* NMOS + PMOS complementary switch, W/L = {WL_ratio}
+
+.include {model_path}
+
+* Supply
+Vdd vdd 0 DC {vdd}
+
+* Control signals: NMOS gate = VDD (ON), PMOS gate = 0 (ON)
+Vclk clk 0 DC {vdd}
+Vclkb clkb 0 DC 0
+
+* Pass voltage (swept)
+Vin in 0 DC 0
+
+* Small perturbation voltage for Ron measurement (10 mV)
+Vdelta out in DC 0.01
+
+* NMOS: drain=out, gate=clk, source=in, bulk=0
+M1 out clk in 0 {nmos_model} W={W}u L={L}u
+
+* PMOS: drain=out, gate=clkb, source=in, bulk=vdd
+M2 out clkb in vdd {pmos_model} W={W}u L={L}u
+
+.dc Vin {vpass_start} {vpass_stop} {vpass_step}
+
+.print dc i(Vdelta)
+
+.end

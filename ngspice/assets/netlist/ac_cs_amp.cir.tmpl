@@ -1,0 +1,25 @@
+* Common-Source NMOS Amplifier — AC Frequency Response
+* PTM 180nm, W={W}um, L={L}um, Rd={Rd}, CL={CL}
+
+.include {model_path}
+
+* Supply
+Vdd vdd 0 DC {vdd}
+
+* Gate bias with AC perturbation
+Vgs gate 0 DC {vgs_bias} AC 1.0
+
+* Load resistor
+Rd vdd drain {Rd}
+
+* NMOS transistor
+M1 drain gate 0 0 NMOS W={W}u L={L}u
+
+* Load capacitor (dominates output pole)
+CL drain 0 {CL}
+
+.ac dec 100 {fstart} {fstop}
+
+.print ac v(drain)
+
+.end

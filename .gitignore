@@ -1,20 +1,19 @@
+# Python bytecode
 __pycache__/
-  *.pyc
+*.pyc
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Simulation outputs — generated at runtime, do not track
+**/logs/
+**/plots/
 *.log
-  logs/
-  plots/
-  .DS_Store
-  Thumbs.db
 
-
+# Repo-specific exclusions
 reference/
-logs/
-models/
-!/gmoverid/assets/models/
-plots/
-netlist/
 trained_models/
-CLAUDE.md
-*.py
-验收标准.md
 user_environment/
+homework/
+验收标准.md

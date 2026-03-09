@@ -1,0 +1,15 @@
+* NMOS DC Id-Vds Family Curves
+* PTM 180nm, W={W}um, L={L}um, Vgs={vgs}V
+
+.include {model_path}
+
+Vds  drain 0 DC 0
+Vgs  gate  0 DC {vgs}
+
+M1 drain gate 0 0 NMOS W={W}u L={L}u
+
+.dc Vds 0 {vds_stop} {vds_step}
+
+.print dc i(Vds)
+
+.end

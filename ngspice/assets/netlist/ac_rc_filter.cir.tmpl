@@ -1,0 +1,12 @@
+* RC Low-Pass Filter — AC Analysis
+* {label}
+* Expected fc = 1/(2*pi*R*C) = {fc_mhz} MHz
+
+Vin in 0 AC 1.0
+R1  in out {R}
+C1  out 0 {C}
+
+.ac dec 100 {fstart} {fstop}
+.print ac v(out)
+
+.end

@@ -5,9 +5,59 @@
 ![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=flat-square&logo=python&logoColor=white)
 ![ngspice](https://img.shields.io/badge/ngspice-required-orange?style=flat-square)
 
-做模拟电路，绕不开晶体管定尺寸。这个库把 gm/ID 方法学的常用仿真和设计流程打包成技能包，装上就能直接用。
+三个让 Agent 具有设计模拟电路能力的技能包：**ngspice 入门** / **gm/ID 设计** / **PTM 模型库**。
 
-### gmoverid 能做什么
+> **如果你是人类**：下面有示例图片，可以直观了解每个技能的输出效果。
+
+> **如果你是 AI Agent**：跳过图片，直接看 [安装](#安装) 说明。每个技能的完整指令在各自的 `SKILL.md`，可运行脚本和模型文件在 `assets/` 目录内。
+
+## 技能总览
+
+| 技能 | 定位 | 功能 |
+|------|------|------|
+| **ngspice** | 入门 | 9 类标准仿真示例（DC / AC / Tran / Noise），从零学 SPICE |
+| **gmoverid** | 进阶 | gm/ID 表征仿真 + 设计 API，自动反查 W、Id、Vgs、fT、gm·ro |
+| **transistor-models** | 模型库 | PTM 全系列模型文件（体硅 65–180nm、HP/LP 22–45nm、FinFET 7–20nm） |
+
+---
+
+## 技能1：ngspice
+
+9 个仿真示例，覆盖模拟电路入门核心知识点：
+
+| # | 类型 | 描述 | 输出 |
+|---|------|------|------|
+| 1 | Tran | RC 充电电压与电流 | `tran_rc_charging.png` |
+| 2 | DC | NMOS Id-Vds 族曲线 | `dc_nmos_iv.png` |
+| 3 | AC | RC 低通滤波器频率响应 | `ac_rc_bw.png` |
+| 4 | Noise | RC 滤波器输出噪声谱密度 | `ac_rc_bw.png` |
+| 5 | Tran | 采样保持开关对比 | `sample_hold_compare.png` |
+| 6 | Tran | kT/C 噪声时域统计 | `tran_ktc_noise_hist.png` |
+| 7 | DC | NMOS 电流镜输出特性 | `dc_current_mirror.png` |
+| 8 | AC | 共源放大器 Bode 图 | `ac_cs_amp_bode.png` |
+| 9 | DC | 传输门导通电阻 | `dc_tgate_ron.png` |
+
+运行方式见 [`ngspice/SKILL.md`](./ngspice/SKILL.md)，Agent 会自动部署资产并执行。
+
+**NMOS Id-Vds 族曲线**
+
+![NMOS Id-Vds](dc_nmos_iv.png)
+
+**RC 低通滤波器频率响应**
+
+![RC 低通滤波器](ac_rc_bw.png)
+
+**RC 充电电压与电流**
+
+![RC 充电](tran_rc_charging.png)
+
+**kT/C 噪声时域统计**
+
+![kT/C 噪声统计](tran_ktc_noise_hist.png)
+
+---
+
+## 技能2：gmoverid
 
 每个工艺节点生成三套标准图：
 
@@ -34,70 +84,9 @@
 - 沟道长度对比（L = 180 / 360 / 1000 nm）：长沟道显著提升 gm·ro（可达 ~140），但 fT 相应降低
 - 跨节点对比（180nm SVT vs 22nm HP）：直观呈现工艺代际的速度–增益权衡
 
-**设计 API**：给定 gm/ID 目标，自动反查 W、Id、Vgs、gm、fT、gm·ro
-
 ![栅电容图](gmid_nmos_caps_comp.png)
 
-内置 **180 / 45 / 22 nm** 三个 PTM 模型，装好即可仿真。如果需要更多工艺节点，可以安装 `transistor-models` skill。
-
-### transistor-models 是什么
-
-PTM（预测性晶体管模型，Predictive Technology Model）是亚利桑那州立大学（Arizona State University, ASU）维护的一套公开 SPICE 模型，用于在没有 PDK 的情况下做工艺探索和教学研究。模型由 UC Berkeley 的 BPTM 项目发展而来，随 Yu Cao 教授迁移至 ASU 后持续更新。这个 Skill 把 [mec.umn.edu/ptm](https://mec.umn.edu/ptm) 上的全部模型打包进来：
-
-- 体硅传统：180 / 130 / 90 / 65 nm
-- 体硅 HP/LP：45 / 32 / 22 nm
-- PTM-MG FinFET（多栅）：20 / 16 / 14 / 10 / 7 nm，HP + LSTP
-
-与 `gmoverid` 相互独立。`gmoverid` 已内置常用节点；需要 32nm LP、7nm FinFET 等时再装这个补全。
-
----
-
-## 推荐使用 Agent 来安装和使用本技能
-
-Agent 会自动处理依赖关系、环境配置和路径选择，确保技能能够无缝集成到你的工作流程中。如果你要手动操作，下面是详细的安装和使用说明。
-
----
-
-
-将 Skill 复制到 Agent 的 skills 路径（以Claude Code 为例）：
-
-安装到用户根目录（全局可用）
-
-```bash
-cp -r gmoverid          ~/.claude/skills/
-cp -r transistor-models ~/.claude/skills/
-```
-
-或安装到项目目录（仅当前项目可用）
-```bash
-cp -r gmoverid          <项目路径>/.claude/skills/
-cp -r transistor-models <项目路径>/.claude/skills/
-```
-
-Windows 将 `~/.claude` 替换为 `%USERPROFILE%\.claude`。
-
-例如你的用户名是 `Alice`，路径就是 `C:\Users\Alice\.claude\skills\`。
-
-## 环境要求
-
-- [ngspice](http://ngspice.sourceforge.net/)（系统全局安装）
-- Python 3，依赖：`numpy`、`matplotlib`、`scipy`
-
-## 使用
-
-### 表征仿真
-
-```bash
-# 部署到项目
-cp -r gmoverid/assets/* <项目目录>/
-mkdir -p <项目目录>/plots <项目目录>/logs
-
-# 运行
-python run_gmoverid.py      # 180nm NMOS/PMOS + 沟道长度扫描
-python run_multinode.py     # 45nm / 22nm HP 多节点对比
-```
-
-### 设计参数
+**设计 API**：给定 gm/ID 目标，自动反查 W、Id、Vgs、gm、fT、gm·ro
 
 ```python
 from design_gmoverid import GmIdTable, print_op
@@ -111,7 +100,19 @@ print_op(op)
 
 首次调用自动运行 ngspice 仿真并缓存，再次调用直接读缓存。
 
-### 使用 transistor-models
+内置 **180 / 45 / 22 nm** 三个 PTM 模型，装好即可仿真。如果需要更多工艺节点，可以安装 `transistor-models` 技能。
+
+---
+
+## 技能3：transistor-models
+
+PTM（预测性晶体管模型，Predictive Technology Model）是亚利桑那州立大学（Arizona State University, ASU）维护的一套公开 SPICE 模型，用于在没有 PDK 的情况下做工艺探索和教学研究。这个技能把 [mec.umn.edu/ptm](https://mec.umn.edu/ptm) 上的全部模型打包进来：
+
+- 体硅传统：180 / 130 / 90 / 65 nm
+- 体硅 HP/LP：45 / 32 / 22 nm
+- PTM-MG FinFET（多栅）：20 / 16 / 14 / 10 / 7 nm，HP + LSTP
+
+与 `gmoverid` 相互独立。`gmoverid` 已内置常用节点；需要 32nm LP、7nm FinFET 等时再装这个补全。
 
 按需从 `transistor-models/assets/models/` 复制 `.lib` 文件到项目 `models/` 目录：
 
@@ -127,11 +128,6 @@ cp transistor-models/assets/models/finfet/nmos7mg_hp.lib <项目目录>/models/
 
 详细参数表见 [`transistor-models/references/model_params.md`](./transistor-models/references/model_params.md)。
 
----
-
-> 如果你是 Agent，以上安装和部署步骤由你代为执行，根据用户需求选择全局或项目级安装路径，无需用户手动操作。
-
----
 
 ## 版权声明
 
@@ -142,3 +138,40 @@ cp transistor-models/assets/models/finfet/nmos7mg_hp.lib <项目目录>/models/
 
 - PTM-MG FinFET 节点（仅限 `transistor-models` 中的 7–20nm 模型）：
   > S. Sinha, G. Yeric, V. Chandra, B. Cline and Y. Cao, "Exploring sub-20nm FinFET design with Predictive Technology Models," *DAC 2012*, pp. 283–288. doi: [10.1145/2228360.2228414](https://doi.org/10.1145/2228360.2228414)
+
+
+---
+
+## 安装
+
+### 推荐使用 Agent 来安装和使用本技能
+
+Agent 会自动处理依赖关系、环境配置和路径选择，确保技能能够无缝集成到你的工作流程中。如果你要手动操作，下面是详细的安装和使用说明。
+
+将 Skill 复制到 Agent 的 skills 路径（以 Claude Code 为例）：
+
+安装到用户根目录（全局可用）
+
+```bash
+cp -r ngspice            ~/.claude/skills/
+cp -r gmoverid           ~/.claude/skills/
+cp -r transistor-models  ~/.claude/skills/
+```
+
+或安装到项目目录（仅当前项目可用）
+```bash
+cp -r ngspice            <项目路径>/.claude/skills/
+cp -r gmoverid           <项目路径>/.claude/skills/
+cp -r transistor-models  <项目路径>/.claude/skills/
+```
+
+Windows 将 `~/.claude` 替换为 `%USERPROFILE%\.claude`。
+
+例如你的用户名是 `Alice`，路径就是 `C:\Users\Alice\.claude\skills\`。
+
+> 如果你是 Agent，以上安装和部署步骤由你代为执行，根据用户需求选择全局或项目级安装路径，无需用户手动操作。
+
+## 环境要求
+
+- [ngspice](http://ngspice.sourceforge.net/)（系统全局安装）
+- Python 3，依赖：`numpy`、`matplotlib`、`scipy`

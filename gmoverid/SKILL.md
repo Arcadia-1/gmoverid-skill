@@ -62,15 +62,6 @@ assets/
 - 全部四格以 Vds 为参数族（VDS_LIST）
 - gm/Id X 轴：xlim=[4,24]，每 2 V⁻¹ 一格
 
-### 核心文件角色
-
-| 文件 | 职责 |
-|------|------|
-| `simulate_gmoverid.py` | `run_vgs/vds/vsg/vsd_sweeps()` → 数据字典列表；`MODEL_INFO` 注册表；`compute_caps()` |
-| `plot_gmoverid.py` | `plot_main()`、`plot_comparison()`、`plot_iv()`、`plot_caps()`、`plot_caps_comparison()`、`print_summary()` |
-| `run_gmoverid.py` | 180nm NMOS/PMOS + 沟道长度扫描对比 |
-| `run_multinode.py` | 45/22nm HP：`NODE_CFG` 驱动逐节点扫描 + 跨节点对比图 |
-
 ### 新增工艺节点
 
 1. 将模型 `.lib` 复制到 `models/`（可从 [mec.umn.edu/ptm](https://mec.umn.edu/ptm) 下载或安装 `transistor-models` skill）
@@ -142,8 +133,9 @@ gm/ID  ──►  Id/W   （电流密度图，决定 W）
 
 **② 确定沟道长度 L**
 - 需要高速（高 fT）→ 选最小 L
-- 需要高增益（高 gm·ro）→ 适当增大 L（每倍增 L，gm·ro 约提升 2–4×）
-- 实用方法：`tbl.lookup('gmro', gmid_target)` 查当前节点能达到的增益上限；不满足时先增大 L 而非改变 gm/ID
+- 需要高增益（高 gm·ro）→ 适当增大 L（每倍 L，gm·ro 约提升 2–4×，fT 相应降低）
+- 先验证可达性：`tbl.lookup('gmro', gmid_target)` 查上限；不满足时先增大 L，再考虑 cascode 或多级拓扑
+- PMOS 负载时需同时核查 PMOS 的 ro：有效增益 = gm_n × (ro_n ∥ ro_p)
 
 **③ 选定 gm/ID**
 根据优先目标在 fT–gm/ID 和 gm·ro–gm/ID 图上选取权衡点：
@@ -167,12 +159,13 @@ Id   = gm / gmid                       # 由 gm/ID 决定
 
 **⑤ 查 Id/W 图得 W，对齐 100nm 栅格**
 ```python
-id_w    = tbl.lookup('id_w', gmid)         # µA/µm（W 无关量）
-W_exact = Id / (id_w * 1e-6)              # µm
-W       = round(W_exact / 0.1) * 0.1      # 对齐 100nm 栅格
+id_w    = tbl.lookup('id_w', gmid)              # µA/µm（W 无关量）
+W_exact = Id / (id_w * 1e-6)                   # µm
+W       = round(W_exact / 0.1) * 0.1           # 四舍五入到 100nm
+# W     = math.ceil(W_exact / 0.1) * 0.1       # 或向上取整（保守余量）
 ```
 
-取整后用重算的 Id、gm 校核 Av 和 BW（若 ΔW < 5%，偏差通常可忽略）。
+取整后重算 Id = W × id_w 校核 Av 和 BW；ΔW < 5% 时偏差通常可忽略。
 
 ---
 
@@ -231,26 +224,6 @@ op = tbl.size_from_gmro(35, Id=50e-6)  # gm·ro ≥ 35，固定 Id
 model, L_um, W_um, Id_A, Vgs_V, Vov_V, gmid, gm_S, ft_Hz, gmro, id_w_Apm
 ```
 
-**`print_op(op)` 输出示例：**
-
-```
-════════════════════════════════════════════
-  Transistor Operating Point
-────────────────────────────────────────────
-  Model    : nmos180       L = 180 nm
-  gm/ID    : 15.0 V⁻¹      Vgs = 0.611 V   Vov = 0.152 V
-────────────────────────────────────────────
-  W        :  6.00 µm
-  Id       :  66.67 µA    Id/W = 11.11 µA/µm
-  gm       :  1.000 mS    fT   = 10.38 GHz
-  gm·ro    : 45.6
-════════════════════════════════════════════
-```
-
-**缓存文件命名**（位于 `logs/cache/`，`.` 替换为 `p`）：
-- `vgs_{model}_W{w:.2f}_L{l:.4f}_Vds{vds:.3f}.json`  （Vgs 扫描）
-- `vds_{model}_W{w:.2f}_L{l:.4f}_{hash8}.json`        （Vds 扫描，hash 来自偏置列表）
-
 ---
 
 ### 各节点 gm/ID 典型设计参数
@@ -272,60 +245,6 @@ model, L_um, W_um, Id_A, Vgs_V, Vov_V, gmid, gm_S, ft_Hz, gmro, id_w_Apm
 | 22nm HP | 6–10 | 200–500 | 400–700 | 3–4 | DIBL 极强，增益极低 |
 
 > Vds 对 Id/W 有轻微影响（先进节点输出阻抗低）：初始设计时忽略，仿真后微调。
-
-## 设计注意：输出阻抗与本征增益
-
-gm/ID 方法论不只是定 W——**输出阻抗 ro = 1/gds 直接决定电路增益，必须在定尺寸时同步核查。**
-
-### 各工艺节点 gm·ro 经验值
-
-| 工艺节点 | gm·ro 典型范围 | 说明 |
-|----------|:--------------:|------|
-| 180nm SVT | 40–55 | gm/ID ≈ 10–20 区间；长沟道 CLM 弱，增益高 |
-| 45nm HP   |  6–10 | 短沟道效应显著；gm/ID ≈ 5–10 时约 7–10 |
-| 22nm HP   |  3–4  | CLM+DIBL 极强；全 gm/ID 范围内几乎平坦 |
-
-> 数据来自本 skill 内置 PTM 模型的 ngspice 仿真，与 `tbl.lookup('gmro', gmid)` 返回值一致。
-
-### 设计时的判断规则
-
-1. **先查 gmro 再定拓扑**：调用 `tbl.lookup('gmro', gmid_target)` 确认当前工艺/偏置点的本征增益；22nm HP 单管增益仅 3–4，直接用单级共源无法驱动高增益负载。
-
-2. **增益不够时的选项**：
-   - **共源共栅（cascode）**：gm·ro 可提升至 (gm·ro)²/2 量级，但 22nm VDD=0.8V 下叠管裕度极小（Vdsat 约 0.1–0.2V），需仔细核查 Vds 余量
-   - **增大沟道长度**：`L` 从 min → 2×min，gm·ro 可提升约 2–4×，但 fT 相应降低
-   - **多级拓扑**：两级 Miller 补偿等；注意每级的 ro 负载
-
-3. **ro 作为负载时**：当晶体管漏端接另一支路的 ro 时，有效增益 = gm × (ro_n ∥ ro_p)，PMOS 负载的 ro 同样需通过 `GmIdTable` 核查。
-
-4. **size_from_gmro() 的使用**：当增益规格明确时，优先用约束定尺寸：
-   ```python
-   # 要求 gm·ro ≥ 30，固定 Id = 50µA（180nm 有效；22nm/45nm HP 中此目标不可达）
-   op = tbl.size_from_gmro(30, Id=50e-6)
-
-   # 先验证目标是否可达
-   max_gmro = max(tbl.lookup('gmro', g) for g in range(4, 25))
-   print(f'Max achievable gm·ro = {max_gmro:.1f}')
-   ```
-
-5. **22nm/45nm HP 下的务实建议**：单级增益 3–8，如需 OTA 增益 > 40 dB（×100），必须使用两级或套筒式/折叠式共源共栅拓扑，设计前通过 `lookup('gmro', ...)` 做初步可行性评估。
-
----
-
-## 晶体管宽度的取整规则
-
-gm/ID 查表得到的 W 为连续实数，流片时须对齐工艺栅格。**约定：W 以 100 nm 为粒度取整**（四舍五入或向上取整均可，取决于设计余量方向）。
-
-```python
-W_exact = Id / (id_w * 1e-6)      # 精确值 [µm]
-W       = round(W_exact / 0.1) * 0.1   # 对齐 100nm 栅格
-
-# 或向上取整（保守，Id 略大，gm 略大）
-import math
-W       = math.ceil(W_exact / 0.1) * 0.1
-```
-
-取整后需校核：重新用 `W × id_w` 算实际 Id 和 gm，再验证 Av 和 BW 是否仍满足指标。若 W 变化量 < 5%，指标偏差通常可忽略。
 
 ---
 

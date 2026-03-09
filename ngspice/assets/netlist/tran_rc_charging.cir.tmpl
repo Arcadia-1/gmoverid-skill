@@ -1,0 +1,13 @@
+* RC Charging Transient — Voltage and Current
+* R={R}, C={C}, tau=R*C={tau_ns} ns
+* Expected: V(out) = Vin*(1 - exp(-t/tau)), I = Vin/R * exp(-t/tau)
+
+Vin in 0 DC {Vin}
+R1  in out {R}
+C1  out 0 {C} IC=0
+
+.tran {tstep} {tstop} UIC
+
+.print tran v(out) i(Vin)
+
+.end

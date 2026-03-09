@@ -1,0 +1,25 @@
+* Sample-and-Hold — Ideal Switch (SPICE subckt)
+* Csamp={Csamp}, fin={fin}, fclk={fclk}
+
+* Ideal switch subcircuit: voltage-controlled resistor
+.subckt ideal_sw ctrl in out
+Rsw in out r='({Ron_expr})'
+.ends ideal_sw
+
+* Input: sine wave
+Vin in 0 SIN(0.9 0.8 {fin} 0 0)
+
+* Clock: pulse (100 MHz, 25% duty)
+Vclk clk 0 PULSE(0 1.8 0 0.1n 0.1n {ton} {tclk})
+
+* Ideal switch instance
+Xsw clk in out ideal_sw
+
+* Sampling capacitor
+Csamp out 0 {Csamp}
+
+.tran {tstep} {tstop} UIC
+
+.print tran v(in) v(clk) v(out)
+
+.end

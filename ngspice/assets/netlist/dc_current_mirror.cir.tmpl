@@ -1,0 +1,25 @@
+* NMOS Current Mirror — DC Output Characteristic
+* PTM 180nm, W={W}um, L={L}um, Iref={Iref}
+
+.include {model_path}
+
+* Supply
+Vdd vdd 0 DC {vdd}
+
+* Reference current source (from VDD into M1 drain)
+Iref vdd d1 DC {Iref}
+
+* M1: diode-connected (gate tied to drain)
+M1 d1 d1 0 0 NMOS W={W}u L={L}u
+
+* M2: mirror output (gate driven by M1)
+M2 out d1 0 0 NMOS W={W}u L={L}u
+
+* Output voltage source (swept)
+Vout out 0 DC 0
+
+.dc Vout {vout_start} {vout_stop} {vout_step}
+
+.print dc i(Vout)
+
+.end
