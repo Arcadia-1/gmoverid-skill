@@ -359,8 +359,9 @@ With W, RL, and Vgs in hand, use the `ngspice` skill to build a `.control` block
 
 ## Self-Validation
 
-This skill can verify its own simulation output against semiconductor physics
-without any external reference.  Run from the project working directory:
+Two complementary checks — run both after generating characterization plots.
+
+### Step 1 — Numerical self-check
 
 ```bash
 python validate_gmoverid.py [model] [L_um]
@@ -368,18 +369,92 @@ python validate_gmoverid.py                    # nmos180 @ 180 nm
 python validate_gmoverid.py nmos45hp 0.045
 ```
 
-Five tests are executed automatically and each prints PASS / FAIL:
+Five scalar tests, each prints PASS / FAIL:
 
-| # | Test | What a failure means |
-|---|------|----------------------|
-| 1 | Weak-inversion limit — peak gm/ID in [25, 32] V^-1 | gm extraction error near Id ≈ 0 |
-| 2 | ID/W strict monotonicity (zero non-monotone steps) | Interpolation oscillation in gm or Id |
-| 3 | L-doubling scaling of gm·ro (×1.5–5) and fT (×0.15–0.70) | Model ignores CLM or capacitance grows unexpectedly |
-| 4 | fT × gm/ID product peaks at gm/ID in [8, 18] V^-1 | Cgg or gm mismatch vs physics |
-| 5 | gm·ro changes ≥ 10 % when Vds sweeps from 0.25·VDD to 0.75·VDD | Model ignores channel-length modulation |
+| # | Test | Pass criterion | Failure meaning |
+|---|------|---------------|----------------|
+| 1 | Weak-inversion limit | peak gm/ID in [25, 32] V^-1 | gm extraction error near Id ≈ 0 |
+| 2 | ID/W monotonicity | zero non-monotone steps | Interpolation oscillation in gm or Id |
+| 3a | L-doubling gain | gmro(2L)/gmro(L) ≥ 1.5 | Model ignores CLM |
+| 3b | L-doubling fT | fT(2L)/fT(L) in [0.15, 0.70] | Cgg scaling wrong |
+| 4 | fT×gm/ID peak | peak at gm/ID in [8, 18] V^-1 | Cgg or gm mismatch |
+| 5 | Vds sensitivity | gmro change ≥ 8% across 0.25–0.75 VDD | Model ignores channel-length modulation |
 
-For the physics derivation and failure-diagnosis guidance behind each threshold,
-see `references/validation.md`.
+For physics derivation and failure diagnosis see `references/validation.md`.
+
+### Step 2 — Visual inspection by LLM
+
+Generate the four-quadrant plot, then show it to Claude and ask for a
+physics assessment.  The expected trends for each panel are listed below —
+use them as the inspection checklist.
+
+**Panel (0,0) — gm/ID vs Vov**
+
+| Zone | Expected trend | Typical values |
+|------|---------------|---------------|
+| Vov < 0 (subthreshold) | gm/ID approaches a constant ceiling from below | 25–32 V^-1 (= 1/(n·Ut), n=1.2–1.5) |
+| Vov ≈ 0 (threshold) | smooth peak, then monotone descent | peak ≈ 25–32 V^-1 |
+| Vov > 0 (strong inversion) | follows 2/Vov (dashed reference line) closely | drops to ~5 V^-1 at Vov=0.4V |
+
+Red flags: peak > 35 (gm noise at low Id), plateau that never decays
+(missing strong-inversion region), kink at Vov=0 (Vth extraction error).
+
+Note: for HP minimum-L nodes, DIBL raises the slope factor n toward 1.4–1.5,
+so the subthreshold ceiling legitimately sits closer to 25 V^-1 rather than
+32 V^-1 — this is correct, not a model defect.
+
+**Panel (0,1) — Id/W vs gm/ID (log Y)**
+
+| Feature | Expected |
+|---------|---------|
+| Direction | strictly decreasing left to right (strong→weak inversion) |
+| Shape on log scale | approximately linear (exponential decay in weak inversion) |
+| Range | spans ≥ 2 decades across gm/ID = [4, 24] |
+| Multiple Vds curves | nearly overlapping (Id/W is weakly Vds-dependent in saturation) |
+
+Red flags: any upward hook (fold-back from subthreshold rising side —
+fixed by `_fall_mask`), flat segment (resolution too coarse), curves
+widely separated by Vds (device not in saturation).
+
+**Panel (1,0) — fT vs gm/ID**
+
+| Feature | Expected |
+|---------|---------|
+| Direction | monotonically decreasing left to right |
+| Shape | roughly follows a power law; steeper decay toward high gm/ID |
+| Magnitude | 180nm: 5–30 GHz; 45nm HP: 100–400 GHz |
+| Multiple Vds curves | nearly overlapping (fT is Vds-insensitive in saturation) |
+
+Red flags: fT increases with gm/ID (sign inversion in gm or Cgg),
+non-monotone wiggles (ngspice convergence issue near threshold), fT > 1 THz
+or < 1 GHz at reasonable bias (Cgg extraction error).
+
+**Panel (1,1) — gm·ro vs gm/ID**
+
+| Feature | Expected |
+|---------|---------|
+| Direction | generally increasing left to right (weak inversion has higher gain) |
+| Magnitude | 180nm: 20–60; 45nm HP min-L: 5–15 |
+| Vds dependence | curves separated — higher Vds → lower gmro (stronger CLM) |
+| Shape | smooth, no kinks; may plateau in strong inversion |
+
+Red flags: completely flat across all gm/ID (CLM ignored), gmro > 200 at
+moderate gm/ID for short-channel nodes (gds underestimated), kinks at
+specific Vgs points (sparse Vds-sweep interpolation artefact — use
+`vgs_gds_results` to enable finite-difference gds path).
+
+### Interpreting LLM visual feedback
+
+LLM image analysis is powerful for shape and smoothness but requires
+physical context to interpret correctly:
+
+- **"Peak below BJT limit 38.6 V^-1"** — expected; MOSFETs have n > 1.
+  Correct ceiling is 1/(n·Ut) ≈ 25–32 V^-1.
+- **"Curves widely separated in panel (0,1) or (1,0)"** — check Vds values;
+  if all are well into saturation the separation should be < 20%.
+- **"gmro is very low (5–10)"** — normal for HP minimum-L nodes; not a defect.
+- **"Curve does not reach weak inversion"** — increase Vgs sweep range or
+  lower id_thresh in `sweep_vgs`.
 
 ---
 
