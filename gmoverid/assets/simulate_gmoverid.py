@@ -338,9 +338,10 @@ def sweep_vgs(vds, w_um=W_UM, l_um=L_UM, model='nmos180'):
     id_w = id_ / (w_um * 1e-6)
     vov  = vgs - vth
 
-    return dict(model=model, pol='nmos', vds=vds, vgs=vgs,
-                id=id_, gm=gm, cgs=cgs, cgd=cgd, cgb=cgb, cgg=cgg,
-                gmid=gmid, ft=ft, id_w=id_w, vov=vov, vth=vth)
+    result = dict(model=model, pol='nmos', vds=vds, vgs=vgs,
+                  id=id_, gm=gm, cgs=cgs, cgd=cgd, cgb=cgb, cgg=cgg,
+                  gmid=gmid, ft=ft, id_w=id_w, vov=vov, vth=vth)
+    return result
 
 
 # ─────────────────────────────────────────────────────────────────────────────

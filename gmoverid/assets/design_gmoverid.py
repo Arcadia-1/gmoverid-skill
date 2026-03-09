@@ -189,6 +189,23 @@ class GmIdTable:
         print(f'               saved  {path.name}')
         return data
 
+    def _get_vgs_data_at(self, vds):
+        """
+        Return (cached) Vgs sweep data at an arbitrary vds.
+        Used for finite-difference gds computation.
+        """
+        path = _vgs_cache_path(self.model, self.W, self.L, vds)
+        if path.exists():
+            data = _load_sweep(path)
+            if data is not None:
+                return data
+        if self._pol == 'pmos':
+            data = sweep_vsg(vds, self.W, self.L, self.model)
+        else:
+            data = sweep_vgs(vds, self.W, self.L, self.model)
+        _save_sweep(data, path)
+        return data
+
     def _get_vds_data(self, force):
         path = _vds_cache_path(
             self.model, self.W, self.L, self._vgs_bias_list)
@@ -213,11 +230,12 @@ class GmIdTable:
         Extract the monotonically-descending right branch of gm/ID vs Vgs
         and build aligned 1-D numpy arrays for all design quantities.
 
-        Selection criteria (applied to the right branch after the gm/ID peak):
-          - id  > 1e-13 A
-          - gmid ∈ [2, 42] V⁻¹
-          - gmid is finite (not NaN)
+        gds is computed via finite difference between two Vgs sweeps at
+        vds and vds+GDS_DELTA, giving the same ~900-point density as gm
+        and eliminating the interpolation kinks from the old sparse Vds approach.
         """
+        GDS_DELTA = 0.05   # 50 mV perturbation for finite-difference gds
+
         d    = self._vgs_data
         vgs  = np.asarray(d['vgs'])
         gmid = np.asarray(d['gmid'], dtype=float)
@@ -226,6 +244,19 @@ class GmIdTable:
         ft   = np.asarray(d['ft'],  dtype=float)
         id_w = np.asarray(d['id_w'])
         vov  = np.asarray(d['vov'])
+
+        # Finite-difference gds: run extra Vgs sweep at vds + delta
+        info    = self._info
+        vds_hi  = round(self.vds + GDS_DELTA, 3)
+        vds_max = float(info.get('vds_stop', 1.8))
+        if vds_hi <= vds_max:
+            print(f'  Vgs sweep+δ [vds={vds_hi}V] ...')
+            data_hi = self._get_vgs_data_at(vds_hi)
+            id_hi   = np.asarray(data_hi['id'])
+            # Both sweeps use identical Vgs grids → element-wise difference is valid
+            gds_full = np.maximum((id_hi - id_) / GDS_DELTA, 0.0)
+        else:
+            gds_full = None   # fallback to sparse Vds interpolation
 
         valid = (
             (id_  > 1e-13) &
@@ -248,6 +279,7 @@ class GmIdTable:
         self._ft_arr   = ft  [peak_idx:][sel]
         self._idw_arr  = id_w[peak_idx:][sel]
         self._vov_arr  = vov [peak_idx:][sel]
+        self._gds_arr  = gds_full[peak_idx:][sel] if gds_full is not None else None
 
         if len(self._vgs_arr) < 2:
             raise RuntimeError(
@@ -256,17 +288,29 @@ class GmIdTable:
                 f'Check Vds={self.vds}V setting or simulation output.')
 
         self._gmro_arr = self._compute_gmro()
+        src = f'finite-diff (Δvds={GDS_DELTA}V)' if self._gds_arr is not None \
+              else 'Vds sweep (sparse, fallback)'
         print(f'  Table built: {len(self._vgs_arr)} points  '
               f'gm/ID in [{self._gmid_arr[-1]:.1f}, '
-              f'{self._gmid_arr[0]:.1f}] V^-1')
+              f'{self._gmid_arr[0]:.1f}] V^-1  [gds: {src}]')
 
     def _compute_gmro(self):
         """
         Compute gm·ro array aligned to self._vgs_arr.
 
-        Uses log-space interpolation of gds(Vgs) from the Vds output sweeps
-        evaluated at Vds = self.vds, matching the algorithm in plot_gmoverid.py.
+        Preferred path: use gds from the same Vgs sweep (@m1[gds] in netlist).
+        This gives gm and gds at the same density (~500 pts) from one source,
+        producing a smooth gm·ro curve with no interpolation artifacts.
+
+        Fallback (old cache without gds): interpolate gds from sparse Vds sweeps
+        (9 bias points by default), which can introduce visible kinks.
         """
+        # ── preferred: single-source gds from Vgs sweep ──────────────────────
+        if self._gds_arr is not None:
+            gds = np.maximum(self._gds_arr, 1e-15)
+            return np.clip(self._gm_arr / gds, 0.0, 1000.0)
+
+        # ── fallback: interpolate from sparse Vds sweeps ─────────────────────
         vds_results = self._vds_data
         if not vds_results:
             return np.zeros(len(self._gm_arr))
