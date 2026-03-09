@@ -262,7 +262,8 @@ class GmIdTable:
             (id_  > 1e-13) &
             np.isfinite(gmid) &
             (gmid >= 2.0) &
-            (gmid <= 42.0)
+            (gmid <= 42.0) &
+            np.isfinite(ft)
         )
 
         # Locate peak gm/ID among valid points

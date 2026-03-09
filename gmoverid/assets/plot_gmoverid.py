@@ -65,6 +65,17 @@ PLOT_DIR.mkdir(parents=True, exist_ok=True)
 # ─────────────────────────────────────────────────────────────────────────────
 # Internal helpers
 # ─────────────────────────────────────────────────────────────────────────────
+def _fall_mask(gmid):
+    """Return a boolean mask keeping only the falling side (past the peak) of
+    the gm/ID vs Vgs curve.  Prevents fold-back artefacts on gm/ID-as-X-axis
+    plots: the same gm/ID value appears twice (subthreshold rising side and
+    inversion falling side).  Only the falling (inversion) side is useful."""
+    pk = int(np.nanargmax(np.where(np.isfinite(gmid), gmid, 0.0)))
+    m = np.zeros(len(gmid), dtype=bool)
+    m[pk:] = True
+    return m
+
+
 def _gds_at_vds(vds_results, vgs_arr, vds_ref, gm_arr=None):
     """
     Interpolate gds(Vgs) at a fixed VDS operating point using VDS output sweeps.
@@ -207,7 +218,7 @@ def plot_main(vgs_results, vds_results, w_um, l_um, model='nmos180',
     for i, r in enumerate(vgs_results):
         c, ls = COLORS[i % 4], LSTYLE[i % 4]
         id_w = r['id_w'];  gmid = r['gmid']
-        mask = np.isfinite(gmid) & (id_w > 1e-6) & (gmid >= 4) & (gmid <= 24)
+        mask = _fall_mask(gmid) & np.isfinite(gmid) & (id_w > 1e-6) & (gmid >= 4) & (gmid <= 24)
         ax01.semilogy(gmid[mask], id_w[mask], color=c, ls=ls, lw=1.8,
                       label=f'{lbl["vds_pfx"]}{r["vds"]:.2f}V')
 
@@ -221,7 +232,7 @@ def plot_main(vgs_results, vds_results, w_um, l_um, model='nmos180',
     for i, r in enumerate(vgs_results):
         c, ls = COLORS[i % 4], LSTYLE[i % 4]
         ft = r['ft'];  gmid = r['gmid']
-        mask = (np.isfinite(ft) & (ft > 1e8) &
+        mask = (_fall_mask(gmid) & np.isfinite(ft) & (ft > 1e8) &
                 np.isfinite(gmid) & (gmid >= 4) & (gmid <= 24))
         ax10.plot(gmid[mask], ft[mask]/1e9, color=c, ls=ls, lw=1.8,
                   label=f'{lbl["vds_pfx"]}{r["vds"]:.2f}V')
@@ -259,7 +270,7 @@ def plot_main(vgs_results, vds_results, w_um, l_um, model='nmos180',
             gds  = _gds_at_vds(vds_results, vgs_arr, vds_ref, gm_arr=gm_arr)
             gmro = medfilt(gm_arr / gds, kernel_size=11)
 
-        mask = (np.isfinite(gmro) & np.isfinite(gmid) &
+        mask = (_fall_mask(gmid) & np.isfinite(gmro) & np.isfinite(gmid) &
                 (gmid >= 4) & (gmid <= 24) & (gmro > 0) & (gmro < 500))
         ax11.plot(gmid[mask], gmro[mask], color=c, ls=ls, lw=1.8,
                   label=f'{lbl["vds_pfx"]}{r_vgs["vds"]:.2f}V')
@@ -326,11 +337,12 @@ def plot_comparison(sweep_list, param_labels, polarity, title, out_path,
         ax00.plot(vov[mask], gmid[mask], color=c, ls=ls, lw=2.0, label=lab)
 
         # ── (0,1) Id/W vs gm/Id ──
-        mask2 = np.isfinite(gmid) & (id_w > 1e-6) & (gmid >= 4) & (gmid <= 24)
+        _fall = _fall_mask(gmid)
+        mask2 = _fall & np.isfinite(gmid) & (id_w > 1e-6) & (gmid >= 4) & (gmid <= 24)
         ax01.semilogy(gmid[mask2], id_w[mask2], color=c, ls=ls, lw=2.0, label=lab)
 
         # ── (1,0) fT vs gm/Id ──
-        mask3 = np.isfinite(ft) & (ft > 1e8) & np.isfinite(gmid) & (gmid >= 4) & (gmid <= 24)
+        mask3 = _fall & np.isfinite(ft) & (ft > 1e8) & np.isfinite(gmid) & (gmid >= 4) & (gmid <= 24)
         ax10.plot(gmid[mask3], ft[mask3]/1e9, color=c, ls=ls, lw=2.0, label=lab)
 
     # ── (1,1) gm*ro vs gm/Id  (gds from VDS output-curve sweeps) ──
@@ -361,7 +373,7 @@ def plot_comparison(sweep_list, param_labels, polarity, title, out_path,
                 gds  = _gds_at_vds(vd_sweeps, r1['vgs'], vds_ref, gm_arr=r1['gm'])
                 gmro = medfilt(r1['gm'] / gds, kernel_size=5)
 
-            mask = (np.isfinite(gmro) & np.isfinite(gmid) &
+            mask = (_fall_mask(gmid) & np.isfinite(gmro) & np.isfinite(gmid) &
                     (gmid >= 4) & (gmid <= 24) & (gmro > 0) & (gmro < 300))
             ax11_.plot(gmid[mask], gmro[mask], color=c, ls=ls, lw=2.0, label=lab)
 

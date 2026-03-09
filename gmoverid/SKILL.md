@@ -1,270 +1,272 @@
 ---
 name: gmoverid
-description: "gm/ID 晶体管表征与设计方法学，基于 ngspice + Python。包含两个独立工作流：(1) 表征工作流 — 对任意 MOSFET 模型生成三套标准曲线：栅电容 Cgg/Cgs/Cgd/Cgb vs Vgs、gm/ID 四象限特性（gm/Id vs Vov、Id/W vs gm/Id、fT vs gm/Id、gm·ro vs gm/Id）、IV 特性（线性/对数 Id vs Vov、输出特性）；支持 180nm 单节点及 45/22nm HP 多节点流程，内置 PTM 模型文件（180/45/22nm），无需额外下载。(2) 设计工作流 — GmIdTable 类将仿真数据构建为查找表（缓存至 logs/cache/），提供 lookup()、size()、size_from_ft()、size_from_gmro() API，按 gm/ID 方法论对 NMOS/PMOS 定尺寸。仅依赖 ngspice skill。当需要搭建或扩展 gm/ID 表征项目、生成特性曲线、解读设计曲线、或按 gm/ID 方法对晶体管定尺寸时，使用本 skill。"
+description: "gm/ID transistor characterization and design methodology, based on ngspice + Python. Two independent workflows: (1) Characterization — generates three standard curve sets for any MOSFET model: gate capacitance (Cgg/Cgs/Cgd/Cgb vs Vgs), gm/ID four-quadrant characteristics (gm/Id vs Vov, Id/W vs gm/Id, fT vs gm/Id, gm·ro vs gm/Id), and IV characteristics (linear/log Id vs Vov, output curves). Supports 180 nm single-node and 45/22 nm HP multi-node flows with built-in PTM model files (180/45/22 nm) — no extra downloads required. (2) Design — the GmIdTable class builds a lookup table from simulation data (cached to logs/cache/) and provides lookup(), size(), size_from_ft(), size_from_gmro() APIs for NMOS/PMOS transistor sizing using the gm/ID methodology. Only depends on the ngspice skill. Use this skill when setting up or extending a gm/ID characterization project, generating characteristic curves, interpreting design curves, or sizing transistors by the gm/ID method."
 ---
 
-# gm/ID 表征与设计 Skill
+# gm/ID Characterization and Design Skill
 
-**依赖**：`ngspice` skill（网表执行、wrdata 解析）。模型文件已内置，无需 `transistor-models` skill。
+**Dependency**: `ngspice` skill (netlist execution, wrdata parsing). Model files are built in — the `transistor-models` skill is not required.
 
-## 资产文件
+## Asset Files
 
 ```
 assets/
-├── simulate_gmoverid.py   — ngspice 仿真引擎、数据提取、解析电容、MODEL_INFO 注册表
-├── plot_gmoverid.py       — 所有 matplotlib 绘图函数
-├── run_gmoverid.py        — 180nm 单节点编排（NMOS/PMOS + 沟道长度扫描）
-├── run_multinode.py       — 多节点编排（45/22nm HP）
-├── design_gmoverid.py     — GmIdTable 查表/定尺寸 API + print_op()
-├── models/                — 内置 PTM 模型文件（开箱即用）
-│   ├── nmos180.lib        — 180nm BSIM3v3（VDD=1.8V）
+├── simulate_gmoverid.py   — ngspice simulation engine, data extraction, analytical caps, MODEL_INFO registry
+├── plot_gmoverid.py       — all matplotlib plotting functions
+├── run_gmoverid.py        — 180 nm single-node orchestration (NMOS/PMOS + channel-length sweep)
+├── run_multinode.py       — multi-node orchestration (45/22 nm HP)
+├── design_gmoverid.py     — GmIdTable lookup/sizing API + print_op()
+├── models/                — built-in PTM model files (ready to use)
+│   ├── nmos180.lib        — 180 nm BSIM3v3 (VDD = 1.8 V)
 │   ├── pmos180.lib
-│   ├── nmos45hp.lib       — 45nm HP BSIM4（VDD=1.0V）
+│   ├── nmos45hp.lib       — 45 nm HP BSIM4 (VDD = 1.0 V)
 │   ├── pmos45hp.lib
-│   ├── nmos22hp.lib       — 22nm HP BSIM4（VDD=0.8V）
+│   ├── nmos22hp.lib       — 22 nm HP BSIM4 (VDD = 0.8 V)
 │   └── pmos22hp.lib
 └── netlist/
-    ├── gmoverid_vgs.cir.tmpl       — NMOS Vgs 扫描（固定 Vds）
-    ├── gmoverid_vds.cir.tmpl       — NMOS Vds 扫描（固定 Vgs）
-    ├── gmoverid_pmos_vsg.cir.tmpl  — PMOS |Vsg| 扫描（固定 |Vsd|）
-    └── gmoverid_pmos_vsd.cir.tmpl  — PMOS |Vsd| 扫描（固定 |Vsg|）
+    ├── gmoverid_vgs.cir.tmpl       — NMOS Vgs sweep (fixed Vds)
+    ├── gmoverid_vds.cir.tmpl       — NMOS Vds sweep (fixed Vgs)
+    ├── gmoverid_pmos_vsg.cir.tmpl  — PMOS |Vsg| sweep (fixed |Vsd|)
+    └── gmoverid_pmos_vsd.cir.tmpl  — PMOS |Vsd| sweep (fixed |Vsg|)
 ```
 
-内置模型来自 [PTM — Arizona State University (ptm.asu.edu)](https://ptm.asu.edu)，免费用于学术研究。如需引用，请使用：W. Zhao and Y. Cao, "New Generation of Predictive Technology Model for Sub-45 nm Early Design Exploration," *IEEE Trans. Electron Devices*, vol. 53, no. 11, pp. 2816–2823, Nov. 2006. doi: 10.1109/TED.2006.884077。如需内置三节点之外的其他工艺，可安装 `transistor-models` skill（完整 PTM 模型库，需自行配置 MODEL_INFO）或从 [mec.umn.edu/ptm](https://mec.umn.edu/ptm) 下载，复制到项目 `models/` 目录。
+Built-in models are from [PTM — Arizona State University (ptm.asu.edu)](https://ptm.asu.edu), free for academic research. When citing, use: W. Zhao and Y. Cao, "New Generation of Predictive Technology Model for Sub-45 nm Early Design Exploration," *IEEE Trans. Electron Devices*, vol. 53, no. 11, pp. 2816–2823, Nov. 2006. doi: 10.1109/TED.2006.884077. For nodes beyond the three built-in ones, install the `transistor-models` skill (full PTM library, requires manual MODEL_INFO configuration) or download from [mec.umn.edu/ptm](https://mec.umn.edu/ptm) and copy the `.lib` file into the project's `models/` directory.
 
 ---
 
-## 工作流一：表征（仿真 + 绘图）
+## Workflow 1: Characterization (Simulation + Plotting)
 
-### 部署
+### Deployment
 
-1. 将所有 assets（含 `models/` 子目录）复制到 `<project>/`
-2. 创建空目录 `plots/` 和 `logs/`
-3. 运行 `python run_gmoverid.py`（180nm）或 `python run_multinode.py`（HP 多节点）
+1. Copy all assets (including the `models/` subdirectory) to `<project>/`
+2. Create empty directories `plots/` and `logs/`
+3. Run `python run_gmoverid.py` (180 nm) or `python run_multinode.py` (HP multi-node)
 
-如需其他节点，将额外 `.lib` 文件复制到 `<project>/models/` 即可。
+For additional nodes, simply copy the extra `.lib` file into `<project>/models/`.
 
-路径无需配置 — 全部通过 `Path(__file__).resolve().parent` 自动解析。
+All paths resolve automatically via `Path(__file__).resolve().parent` — no path configuration needed.
 
-### 三套标准图（每个模型）
+### Three Standard Plot Sets (per model)
 
-| 套数 | 函数 | 输出文件 |
-|------|------|----------|
-| 栅电容 | `plot_caps()` | `gmoverid_caps_{model}_L{node}nm.png` |
-| gm/ID 四象限 | `plot_main()` | `gmoverid_{model}_L{node}nm.png` |
-| IV 特性 | `plot_iv()` | `gmoverid_iv_{model}_L{node}nm.png` |
+| Set | Function | Output file |
+|-----|----------|-------------|
+| Gate capacitance | `plot_caps()` | `gmoverid_caps_{model}_L{node}nm.png` |
+| gm/ID four-quadrant | `plot_main()` | `gmoverid_{model}_L{node}nm.png` |
+| IV characteristics | `plot_iv()` | `gmoverid_iv_{model}_L{node}nm.png` |
 
-**gm/ID 四象限布局（`plot_main`，2×2）：**
+**gm/ID four-quadrant layout (`plot_main`, 2×2):**
 ```
-(0,0) gm/Id [V⁻¹] vs Vov      | (0,1) Id/W [µA/µm] vs gm/Id  (对数 Y)
-(1,0) fT [GHz]    vs gm/Id    | (1,1) gm·ro         vs gm/Id
+(0,0) gm/Id [V⁻¹] vs Vov     | (0,1) Id/W [uA/um] vs gm/Id  (log Y)
+(1,0) fT [GHz]    vs gm/Id   | (1,1) gm·ro        vs gm/Id
 ```
-- 全部四格以 Vds 为参数族（VDS_LIST）
-- gm/Id X 轴：xlim=[4,24]，每 2 V⁻¹ 一格
+- All four panels use Vds as the curve parameter (VDS_LIST)
+- gm/Id X-axis: xlim = [4, 24], one grid division per 2 V⁻¹
+- Panels (0,1), (1,0), (1,1) apply `_fall_mask(gmid)` before plotting — the gm/ID array is double-valued (same gm/ID appears on the subthreshold rising side and the inversion falling side); only the falling (inversion) side is kept to prevent curve fold-back. Panel (0,0) is exempt because its X-axis is Vov, which is monotonic.
 
-### 新增工艺节点
+### Adding a New Technology Node
 
-1. 将模型 `.lib` 复制到 `models/`（可从 [mec.umn.edu/ptm](https://mec.umn.edu/ptm) 下载或安装 `transistor-models` skill）
-2. 在 `simulate_gmoverid.py` 的 `MODEL_INFO` 新增条目（见 conventions.md §3）
-3. 在 `run_multinode.py` 的 `NODE_CFG` 新增条目
+1. Copy the model `.lib` into `models/` (download from [mec.umn.edu/ptm](https://mec.umn.edu/ptm) or install the `transistor-models` skill)
+2. Add an entry to `MODEL_INFO` in `simulate_gmoverid.py` (see conventions.md §3)
+3. Add an entry to `NODE_CFG` in `run_multinode.py`
 
 ---
 
-## 绘图规范（新建图时须遵守）
+## Plotting Conventions (required when creating new figures)
 
-> 为新项目生成图件或在设计报告中绘图时，须与本 skill 已有图件风格一致。
+> When generating figures for a new project or plotting for a design report, follow the style of the existing figures produced by this skill.
 
-**格式要求：**
-- 不得调用 `plt.show()`，统一使用 `fig.savefig(path, dpi=150, bbox_inches='tight')`；图件保存至 `plots/`
-- 颜色与线型按 `plot_gmoverid.py` 中的 `COLORS`/`LSTYLE` 列表依次取用（蓝实线、橙虚线、绿点划线、紫点线）
-- X 轴若为 gm/ID，统一 `xlim=[4, 24]`，每 2 V⁻¹ 一刻度；Y 轴 `ylim(bottom=0)`
-- 图题与轴标签用 **ASCII + LaTeX**（如 `$g_m/I_D$`），**不要在 matplotlib 标签中直接写中文字符**
-- **`µ`（U+00B5）在部分终端和字体下显示失败**，轴标签中一律用 `u` 替代（如 `uA/um`、`W=10um`），或用 LaTeX `$\\mu$`；除非用户明确要求才使用 Unicode µ
+**Format requirements:**
+- Never call `plt.show()`; always use `fig.savefig(path, dpi=150, bbox_inches='tight')` and save to `plots/`
+- Colors and line styles: cycle through `COLORS`/`LSTYLE` from `plot_gmoverid.py` in order (blue solid, orange dashed, green dash-dot, purple dotted)
+- X-axis for gm/ID: always `xlim = [4, 24]` with one tick per 2 V⁻¹; Y-axis `ylim(bottom=0)`
+- **Fold-back prevention**: whenever gm/ID is the X-axis, prepend `_fall_mask(gmid)` to the boolean mask. The gm/ID vs Vgs curve peaks and then descends — both sides can fall within [4, 24], causing matplotlib to draw a fold-back. `_fall_mask` discards the subthreshold rising side (before the peak); only the inversion falling side is plotted. This rule applies to `plot_main` panels (0,1)/(1,0)/(1,1) and to the equivalent panels in `plot_comparison`.
+- Titles and axis labels: use **ASCII + LaTeX** (e.g. `$g_m/I_D$`); **do not write Chinese characters directly in matplotlib labels**
+- **`µ` (U+00B5) fails to render in some terminals and fonts** — always use `u` in axis labels (e.g. `uA/um`, `W=10um`) or LaTeX `$\\mu$`; use Unicode µ only when the user explicitly requests it
 
-**中文字体警告：**
-matplotlib 默认不含中文字体，直接写中文会显示方框（□□）。如确需中文，在脚本顶部添加：
+**Chinese font warning:**
+matplotlib does not include Chinese fonts by default; Chinese characters render as boxes (□□). If Chinese is needed, add at the top of the script:
 ```python
 import matplotlib
 matplotlib.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'DejaVu Sans']
 matplotlib.rcParams['axes.unicode_minus'] = False
 ```
-Windows 优先用 `Microsoft YaHei`；Linux/macOS 需确认系统已安装对应字体，否则仍显示方框。**最稳妥的方案是仅用 ASCII/LaTeX 标签，彻底规避字体依赖。**
+On Windows prefer `Microsoft YaHei`; on Linux/macOS verify the font is installed, otherwise boxes still appear. **The most robust approach is to use only ASCII/LaTeX labels and avoid font dependencies entirely.**
 
 ---
 
-## 工作流二：设计（查表定尺寸）
+## Workflow 2: Design (Lookup-Table Sizing)
 
-### gm/ID 方法论核心思想
+### Core Idea of the gm/ID Methodology
 
-**gm/ID（跨导效率）是连接电路指标与器件尺寸的轴心量。**
+**gm/ID (transconductance efficiency) is the pivot quantity linking circuit specifications to device dimensions.**
 
-传统设计方法依赖长沟道模型公式（gm = 2Id/Vov）计算尺寸，在先进工艺（≤ 180nm）下误差极大。gm/ID 方法的根本出发点是：放弃公式，改用仿真生成的设计图（查表），用 gm/ID 作为唯一自变量，把器件的所有关键性能参数统一表达出来：
+Traditional design relies on long-channel model equations (gm = 2Id/Vov) to compute device sizes; errors are severe in advanced nodes (≤ 180 nm). The gm/ID method abandons equations in favor of simulation-generated design charts (lookup tables), using gm/ID as the single independent variable to express all key device performance parameters:
 
 ```
-gm/ID  ──►  Id/W   （电流密度图，决定 W）
-       ──►  fT     （截止频率，决定速度）
-       ──►  gm·ro  （本征增益，决定增益上限）
-       ──►  Vgs    （唯一确定偏置点）
+gm/ID  ──►  Id/W   (current-density curve → determines W)
+       ──►  fT     (transit frequency → determines speed)
+       ──►  gm·ro  (intrinsic gain → determines gain ceiling)
+       ──►  Vgs    (uniquely determines the bias point)
 ```
 
-这四条曲线全部**与晶体管宽度 W 无关**——不同 W 的器件在 gm/ID 轴上对应完全相同的 Id/W、fT、gm·ro 值。这是方法论的基础：设计图只需针对单位宽度生成一次，之后对任意 W 都直接适用。
+All four curves are **independent of transistor width W** — devices of different W share exactly the same Id/W, fT, and gm·ro values at the same gm/ID point. This is the foundation of the methodology: the design chart needs to be generated only once (at unit width), and it applies directly to any W.
 
-**gm/ID 是三大设计目标的权衡轴：**
+**gm/ID is the trade-off axis for three design objectives:**
 
-| 设计优先目标 | gm/ID 取值方向 | 原因 |
-|-------------|:-------------:|------|
-| 高速（fT↑） | 低 gm/ID（强反型） | 高 Vov → 快 |
-| 高增益（gm·ro↑） | 高 gm/ID（弱/中反型） | 更接近亚阈值 |
-| 低功耗（Id↓，同 W） | 高 gm/ID | Id/W 随 gm/ID 升高而降低 |
-| 最小面积（W↓，同 Id） | 低 gm/ID | Id/W 随 gm/ID 升高而降低 |
+| Design priority | Direction of gm/ID | Reason |
+|----------------|:-----------------:|--------|
+| High speed (fT↑) | Low gm/ID (strong inversion) | High Vov → fast |
+| High gain (gm·ro↑) | High gm/ID (weak/moderate inversion) | Closer to subthreshold |
+| Low power (Id↓, same W) | High gm/ID | Id/W decreases as gm/ID increases |
+| Minimum area (W↓, same Id) | Low gm/ID | Id/W decreases as gm/ID increases |
 
-> 注意：面积与功耗的优化方向相反——这正是 gm/ID 设计中需要权衡的核心矛盾。
+> Note: area and power optimization point in opposite directions — this is the central trade-off in gm/ID design.
 
 ---
 
-### 设计流程（五步）
+### Design Flow (Five Steps)
 
 ```
-① 选拓扑 → ② 定 L → ③ 选 gm/ID → ④ 算 gm / Id → ⑤ 查 Id/W → 得 W
+① Choose topology → ② Set L → ③ Choose gm/ID → ④ Derive gm / Id → ⑤ Look up Id/W → get W
 ```
 
-**① 选择拓扑**
-根据增益、带宽、摆幅要求确定电路结构（共源、差分对、共栅、Cascode 等）。
+**① Choose topology**
+Select the circuit structure (common-source, differential pair, cascode, common-gate, etc.) based on gain, bandwidth, and swing requirements.
 
-**② 确定沟道长度 L**
-- 需要高速（高 fT）→ 选最小 L
-- 需要高增益（高 gm·ro）→ 适当增大 L（每倍 L，gm·ro 约提升 2–4×，fT 相应降低）
-- 先验证可达性：`tbl.lookup('gmro', gmid_target)` 查上限；不满足时先增大 L，再考虑 cascode 或多级拓扑
-- PMOS 负载时需同时核查 PMOS 的 ro：有效增益 = gm_n × (ro_n ∥ ro_p)
+**② Set channel length L**
+- Need high speed (high fT) → choose minimum L
+- Need high gain (high gm·ro) → increase L moderately (each doubling of L raises gm·ro by roughly 2–4×, with a corresponding fT reduction)
+- Verify feasibility first: `tbl.lookup('gmro', gmid_target)` to check the upper bound; if unsatisfied, increase L before considering cascode or multi-stage topologies
+- With a PMOS load, also verify PMOS ro: effective gain = gm_n × (ro_n ∥ ro_p)
 
-**③ 选定 gm/ID**
-根据优先目标在 fT–gm/ID 和 gm·ro–gm/ID 图上选取权衡点：
+**③ Choose gm/ID**
+Select the trade-off point on the fT–gm/ID and gm·ro–gm/ID curves based on the design priority:
 ```python
 tbl = GmIdTable('nmos45hp', W=1.0, L=0.045, vds=0.5)
 
-# 决策前先查边界值
+# Check boundary values before deciding
 print(f"fT   @ gmid=6  : {tbl.lookup('ft',   6.0)/1e9:.1f} GHz")
 print(f"fT   @ gmid=15 : {tbl.lookup('ft',  15.0)/1e9:.1f} GHz")
 print(f"gmro @ gmid=6  : {tbl.lookup('gmro',  6.0):.1f}")
 print(f"gmro @ gmid=15 : {tbl.lookup('gmro', 15.0):.1f}")
 ```
 
-**④ 由电路指标推导所需 gm，再算 Id**
+**④ Derive the required gm from circuit specs, then compute Id**
 ```python
-# 示例：BW 和增益约束推导 gm（ro 感知，见设计示例节）
-Rout = 1 / (2 * 3.14159 * BW * CL)   # RL∥ro，由带宽决定
-gm   = Av / Rout                       # 由增益决定
-Id   = gm / gmid                       # 由 gm/ID 决定
+# Example: BW and gain constraints → gm (ro-aware, see design example section)
+Rout = 1 / (2 * 3.14159 * BW * CL)   # RL∥ro, set by bandwidth
+gm   = Av / Rout                       # set by gain
+Id   = gm / gmid                       # set by gm/ID
 ```
 
-**⑤ 查 Id/W 图得 W，对齐 100nm 栅格**
+**⑤ Look up Id/W to get W, round to 100 nm grid**
 ```python
-id_w    = tbl.lookup('id_w', gmid)              # µA/µm（W 无关量）
-W_exact = Id / (id_w * 1e-6)                   # µm
-W       = round(W_exact / 0.1) * 0.1           # 四舍五入到 100nm
-# W     = math.ceil(W_exact / 0.1) * 0.1       # 或向上取整（保守余量）
+id_w    = tbl.lookup('id_w', gmid)              # uA/um (W-independent)
+W_exact = Id / (id_w * 1e-6)                   # um
+W       = round(W_exact / 0.1) * 0.1           # round to 100 nm
+# W     = math.ceil(W_exact / 0.1) * 0.1       # or round up (conservative margin)
 ```
 
-取整后重算 Id = W × id_w 校核 Av 和 BW；ΔW < 5% 时偏差通常可忽略。
+After rounding, recompute Id = W × id_w and verify Av and BW; a ΔW < 5% deviation is usually negligible.
 
 ---
 
-### API 参考：`GmIdTable`
+### API Reference: `GmIdTable`
 
 ```python
 from design_gmoverid import GmIdTable, print_op
 
-# 首次调用：自动运行 ngspice 并缓存到 logs/cache/（JSON）
-# 再次调用：直接读缓存，约 0.05 s
+# First call: runs ngspice automatically and caches to logs/cache/ (JSON)
+# Subsequent calls: reads from cache, ~0.05 s
 tbl = GmIdTable('nmos180', W=10.0, L=0.18, vds=0.9)
 ```
 
-**构造参数：**
+**Constructor parameters:**
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `model` | str | — | `MODEL_INFO` 中的键，如 `'nmos180'`、`'pmos45hp'` |
-| `W` | float | — | 仿真参考宽度 [µm]（结果与 W 无关，任意值均可） |
-| `L` | float | — | 沟道长度 [µm] |
-| `vds` | float | VDD/2 | Vgs 扫描时固定的 Vds（NMOS）或 \|Vsd\|（PMOS）[V] |
-| `force_resim` | bool | False | `True` 则忽略缓存，重新仿真 |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model` | str | — | Key in `MODEL_INFO`, e.g. `'nmos180'`, `'pmos45hp'` |
+| `W` | float | — | Simulation reference width [um] (results are W-independent; any value works) |
+| `L` | float | — | Channel length [um] |
+| `vds` | float | VDD/2 | Fixed Vds (NMOS) or \|Vsd\| (PMOS) during Vgs sweep [V] |
+| `force_resim` | bool | False | If `True`, ignores cache and re-runs simulation |
 
-**查询单个量（W 无关，仅依赖 gm/ID）：**
+**Single-quantity lookup (W-independent, depends only on gm/ID):**
 
 ```python
-tbl.lookup('id_w', gmid)   # Id/W [µA/µm]  ← 由此算 W
-tbl.lookup('ft',   gmid)   # 截止频率 fT [Hz]
-tbl.lookup('gmro', gmid)   # 本征增益 gm·ro
-tbl.lookup('vgs',  gmid)   # Vgs（或 |Vsg|）[V]  ← 偏置点
-tbl.lookup('vov',  gmid)   # 过驱动电压 Vov [V]
-tbl.lookup('gm',   gmid)   # 跨导 [S]（在参考宽度 W 下）
+tbl.lookup('id_w', gmid)   # Id/W [uA/um]  <- use this to compute W
+tbl.lookup('ft',   gmid)   # transit frequency fT [Hz]
+tbl.lookup('gmro', gmid)   # intrinsic gain gm·ro
+tbl.lookup('vgs',  gmid)   # Vgs (or |Vsg|) [V]  <- bias point
+tbl.lookup('vov',  gmid)   # overdrive voltage Vov [V]
+tbl.lookup('gm',   gmid)   # transconductance [S] (at reference width W)
 ```
 
-**定尺寸：固定 gm/ID + 一个约束**
+**Sizing: fix gm/ID + one constraint**
 
 ```python
-op = tbl.size(gmid=15.0, Id=100e-6)   # 由 Id 求 W
-op = tbl.size(gmid=15.0, W=20.0)      # 由 W 求 Id
-op = tbl.size(gmid=15.0, gm=1.5e-3)   # 由 gm 求 Id 和 W
+op = tbl.size(gmid=15.0, Id=100e-6)   # given Id, solve for W
+op = tbl.size(gmid=15.0, W=20.0)      # given W, solve for Id
+op = tbl.size(gmid=15.0, gm=1.5e-3)   # given gm, solve for Id and W
 print_op(op)
 ```
 
-**约束定尺寸：自动寻优（最高 gm/ID = 最省电流）**
+**Constrained sizing: auto-search (highest gm/ID = lowest current)**
 
 ```python
-op = tbl.size_from_ft(8e9,  W=20.0)    # fT ≥ 8 GHz，固定 W
-op = tbl.size_from_gmro(35, Id=50e-6)  # gm·ro ≥ 35，固定 Id
+op = tbl.size_from_ft(8e9,  W=20.0)    # fT >= 8 GHz, fixed W
+op = tbl.size_from_gmro(35, Id=50e-6)  # gm·ro >= 35, fixed Id
 ```
 
-- `size_from_ft`：适合已知宽度、需满足速度指标的场景（LNA 跨导管、OTA GBW）
-- `size_from_gmro`：适合高增益级（建议固定 W，避免弱反型下 W 过大）
+- `size_from_ft`: suited for known-width, speed-constrained scenarios (LNA transconductor, OTA GBW)
+- `size_from_gmro`: suited for high-gain stages (prefer fixing W to avoid excessively large W in weak inversion)
 
-**`size()` 返回字典的键：**
+**Keys returned by `size()`:**
 ```
 model, L_um, W_um, Id_A, Vgs_V, Vov_V, gmid, gm_S, ft_Hz, gmro, id_w_Apm
 ```
 
 ---
 
-### 各节点 gm/ID 典型设计参数
+### Typical gm/ID Design Parameters by Node
 
-**nmos180（Vds = 0.9 V，L = 180 nm）**
+**nmos180 (Vds = 0.9 V, L = 180 nm)**
 
-| gm/ID [V⁻¹] | Id/W [µA/µm] | fT [GHz] | gm·ro | 适用场景 |
-|:-----------:|:------------:|:--------:|:-----:|----------|
-|  5–8  | 42–81 | 20–25 | 27–36 | 高速电路、采样开关 |
-| 10–12 | 20–29 | 15–18 | 39    | OTA 输出级、驱动器 |
-| 13–16 | 8–17  |  9–13 | 39–46 | OTA 输入差分对（平衡） |
-| 18–20 |  3–6  |  4–6  | 53    | 低功耗模拟级、基准 |
+| gm/ID [V⁻¹] | Id/W [uA/um] | fT [GHz] | gm·ro | Typical use |
+|:-----------:|:------------:|:--------:|:-----:|-------------|
+|  5–8  | 42–81 | 20–25 | 27–36 | High-speed circuits, sampling switches |
+| 10–12 | 20–29 | 15–18 | 39    | OTA output stage, drivers |
+| 13–16 | 8–17  |  9–13 | 39–46 | OTA input differential pair (balanced) |
+| 18–20 |  3–6  |  4–6  | 53    | Low-power analog, voltage references |
 
-**nmos45hp / nmos22hp（HP，最小 L）**
+**nmos45hp / nmos22hp (HP, minimum L)**
 
-| 节点 | gm/ID [V⁻¹] | Id/W [µA/µm] | fT [GHz] | gm·ro | 说明 |
-|------|:-----------:|:------------:|:--------:|:-----:|------|
-| 45nm HP | 6–10 | 150–300 | 200–400 | 6–8 | CLM 强，增益低，需考虑 ro |
-| 22nm HP | 6–10 | 200–500 | 400–700 | 3–4 | DIBL 极强，增益极低 |
+| Node | gm/ID [V⁻¹] | Id/W [uA/um] | fT [GHz] | gm·ro | Notes |
+|------|:-----------:|:------------:|:--------:|:-----:|-------|
+| 45 nm HP | 6–10 | 150–300 | 200–400 | 6–8 | Strong CLM, low gain — ro must be considered |
+| 22 nm HP | 6–10 | 200–500 | 400–700 | 3–4 | Very strong DIBL, extremely low gain |
 
-> Vds 对 Id/W 有轻微影响（先进节点输出阻抗低）：初始设计时忽略，仿真后微调。
+> Vds has a minor effect on Id/W (advanced nodes have lower output impedance): ignore it during initial design, then fine-tune after simulation.
 
 ---
 
-## 设计示例：45nm HP 共源放大器
+## Design Example: 45 nm HP Common-Source Amplifier
 
-**指标**（来自教材 5.2.1 节，40nm 工艺，用 PTM 45nm HP 作为代理模型）：
+**Specifications** (from textbook §5.2.1, 40 nm process, using PTM 45 nm HP as surrogate model):
 
-| 指标 | 值 |
-|------|----|
+| Specification | Value |
+|---------------|-------|
 | VDD | 1.1 V |
-| 低频电压增益 Av | 2（线性，即 6 dB） |
-| −3 dB 带宽 BW | 100 MHz |
-| 负载电容 CL | 10 pF |
-| 总电流 Id | ≤ 2 mA |
-| 沟道长度 L | 45 nm（最小栅长） |
-| 设计目标 | gm/ID = 10 V⁻¹（平衡速度与功耗） |
+| Low-frequency voltage gain Av | 2 (linear, i.e. 6 dB) |
+| −3 dB bandwidth BW | 100 MHz |
+| Load capacitance CL | 10 pF |
+| Total current Id | ≤ 2 mA |
+| Channel length L | 45 nm (minimum gate length) |
+| Design target | gm/ID = 10 V⁻¹ (balanced speed vs. power) |
 
-### 1. 推导设计约束（含 ro）
+### 1. Derive Design Constraints (ro-aware)
 
-增益公式含 ro 项，不可忽略：
+The gain equation includes the ro term and cannot be neglected:
 
 ```
 |A_DC| = gm·(RL ∥ ro)
@@ -274,26 +276,26 @@ model, L_um, W_um, Id_A, Vgs_V, Vov_V, gmid, gm_S, ft_Hz, gmro, id_w_Apm
 => gm·RL = 1 / (1/Av − 1/(gm·ro))
 ```
 
-45nm HP 的本征增益 gm·ro ≈ 7（由 `tbl.lookup('gmro', gmid)` 查表确认），代入：
+For 45 nm HP, intrinsic gain gm·ro ≈ 7 (confirmed via `tbl.lookup('gmro', gmid)`). Substituting:
 
 ```
 gm·RL = 1 / (1/2 − 1/7) ≈ 2.80
 ```
 
-带宽决定输出节点总阻抗（RL ∥ ro），即实际 Rout：
+Bandwidth determines the total output-node impedance (RL ∥ ro), i.e. the actual Rout:
 
 ```
-Rout = RL ∥ ro = 1 / (2π × BW × CL)
-     = 1 / (2π × 100 MHz × 10 pF) ≈ 159 Ω
+Rout = RL ∥ ro = 1 / (2pi × BW × CL)
+     = 1 / (2pi × 100 MHz × 10 pF) ≈ 159 Ohm
 
 gm = Av / Rout = 2 / 159 ≈ 12.6 mA/V
 
-RL = gm·RL / gm = 2.80 / 12.6 mS ≈ 222 Ω
+RL = gm·RL / gm = 2.80 / 12.6 mS ≈ 222 Ohm
 ```
 
-> **为什么不能直接 RL = Rout？** Rout = 159Ω 是 RL∥ro，不是 RL 本身。RL 必须大于 Rout，由增益公式中 gm·ro 项反算得到。
+> **Why not simply set RL = Rout?** Rout = 159 Ω is RL∥ro, not RL itself. RL must be larger than Rout and is back-calculated from the gain equation using the gm·ro term.
 
-### 2. 用 GmIdTable 定尺寸
+### 2. Size with GmIdTable
 
 ```python
 from design_gmoverid import GmIdTable
@@ -305,58 +307,58 @@ tbl = GmIdTable('nmos45hp', W=1.0, L=0.045, vds=0.5)
 
 gmid = 10.0
 gmro = tbl.lookup('gmro', gmid)   # => 7.11
-id_w = tbl.lookup('id_w', gmid)   # => 155.4 µA/µm
-vgs  = tbl.lookup('vgs',  gmid)   # => 0.499 V  (偏置点 Vgs)
+id_w = tbl.lookup('id_w', gmid)   # => 155.4 uA/um
+vgs  = tbl.lookup('vgs',  gmid)   # => 0.499 V  (bias Vgs)
 vov  = tbl.lookup('vov',  gmid)   # => 0.244 V
 
-# Step 1: 推导 gm 和 RL（ro 感知）
-Rout   = 1 / (2 * 3.14159 * BW * CL)   # 159 Ω = RL∥ro
-gm_RL  = 1 / (1/Av - 1/gmro)           # 2.80（含 ro 的增益约束）
+# Step 1: derive gm and RL (ro-aware)
+Rout   = 1 / (2 * 3.14159 * BW * CL)   # 159 Ohm = RL||ro
+gm_RL  = 1 / (1/Av - 1/gmro)           # 2.80 (gain constraint including ro)
 gm     = Av / Rout                      # 12.6 mA/V
-RL     = gm_RL / gm                     # 222 Ω
+RL     = gm_RL / gm                     # 222 Ohm
 
-# Step 2: 计算 Id 和 W
+# Step 2: compute Id and W
 Id      = gm / gmid                     # 1.26 mA
-W_exact = Id / (id_w * 1e-6)           # 8.09 µm
-W       = round(W_exact / 0.1) * 0.1   # => 8.1 µm（100nm 栅格）
+W_exact = Id / (id_w * 1e-6)           # 8.09 um
+W       = round(W_exact / 0.1) * 0.1   # => 8.1 um (100 nm grid)
 
-# Step 3: 用取整后的 W 校核
+# Step 3: verify with rounded W
 Id_r  = W * id_w * 1e-6                # 1.259 mA
 gm_r  = Id_r * gmid                    # 12.59 mA/V
-ro_r  = gmro / gm_r                    # 565 Ω
+ro_r  = gmro / gm_r                    # 565 Ohm
 Av_r  = gm_r * (RL * ro_r / (RL + ro_r))  # 2.00 ✓
-Vd_DC = VDD - Id_r * RL                # 0.821 V  (余量 577 mV ≫ Vov 244 mV ✓)
+Vd_DC = VDD - Id_r * RL                # 0.821 V  (margin 577 mV >> Vov 244 mV ✓)
 ```
 
-### 3. 设计结果汇总
+### 3. Design Summary
 
-| 参数 | 值 |
-|------|----|
+| Parameter | Value |
+|-----------|-------|
 | gm/ID | 10 V⁻¹ |
-| **W / L** | **8.1 µm / 45 nm** |
-| Id | 1.26 mA（< 2 mA ✓） |
+| **W / L** | **8.1 um / 45 nm** |
+| Id | 1.26 mA (< 2 mA ✓) |
 | gm | 12.6 mA/V |
 | gm·ro | 7.11 |
-| RL | 222 Ω |
-| Av（校核） | 2.00 ✓ |
-| Vgs（偏置） | 0.499 V |
+| RL | 222 Ohm |
+| Av (verified) | 2.00 ✓ |
+| Vgs (bias) | 0.499 V |
 | Vd_DC | 0.821 V |
 
-### 4. 后续仿真（交由 ngspice skill）
+### 4. Post-Design Simulation (hand off to ngspice skill)
 
-拿到 W、RL、Vgs 后，用 `ngspice` skill 搭建 `.control` block 网表并仿真：
+With W, RL, and Vgs in hand, use the `ngspice` skill to build a `.control` block netlist and simulate:
 
-- **DC 工作点**：核查 `@m1[id]`、`@m1[gm]`、`@m1[gds]`，与设计值比对
-- **AC 频率响应**：`ac dec 200 1e5 1e10` → 读 `vdb(vout)` → 验证低频增益和 −3dB 频率
-- **绘图**：用 `wrdata` 保存频率-增益数据，调 matplotlib 绘 Bode 幅频图
+- **DC operating point**: verify `@m1[id]`, `@m1[gm]`, `@m1[gds]` against design values
+- **AC frequency response**: `ac dec 200 1e5 1e10` → read `vdb(vout)` → verify low-frequency gain and −3 dB frequency
+- **Plotting**: save frequency-gain data with `wrdata`, plot a Bode magnitude response using matplotlib
 
 ---
 
-## 参考文档
+## Reference Documents
 
-详见 `references/conventions.md`：
-- §1–5  项目结构、符号约定、MODEL_INFO、网表模板、数据字典键
-- §6–7  扫描配置常量（NODE_CFG）、绘图约定与图件列表
-- §8–9  物理合理性校验值、常见错误与修复
-- §10   扩展 skill（新节点、新图类型、新沟道长度）
-- §11   设计 API 完整参考（GmIdTable、print_op、缓存命名、单位约定）
+See `references/conventions.md` for full details:
+- §1–5  Project structure, symbol conventions, MODEL_INFO, netlist templates, data-dict keys
+- §6–7  Sweep configuration constants (NODE_CFG), plotting conventions and figure list
+- §8–9  Physical sanity-check values, common errors and fixes
+- §10   Extending the skill (new nodes, new plot types, new channel lengths)
+- §11   Full design API reference (GmIdTable, print_op, cache naming, unit conventions)

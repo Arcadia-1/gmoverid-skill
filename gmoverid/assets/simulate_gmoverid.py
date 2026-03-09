@@ -335,6 +335,14 @@ def sweep_vgs(vds, w_um=W_UM, l_um=L_UM, model='nmos180'):
     id_thresh = 1e-13
     gmid = np.where(id_ > id_thresh, gm / id_, np.nan)
     ft   = np.where(cgg > 0, gm / (2.0 * np.pi * cgg), np.nan)
+    # Remove spike artifacts: interior points where fT < 10% of both finite neighbours.
+    # These arise from near-zero analytical Cgg values in weak inversion.
+    _ft_pad = np.where(np.isfinite(ft), ft, np.inf)
+    _spike  = (np.isfinite(ft) &
+               (ft < 0.1 * np.minimum(
+                   np.concatenate([[np.inf], _ft_pad[:-1]]),
+                   np.concatenate([_ft_pad[1:], [np.inf]]))))
+    ft = np.where(_spike, np.nan, ft)
     id_w = id_ / (w_um * 1e-6)
     vov  = vgs - vth
 
@@ -441,6 +449,13 @@ def sweep_vsg(vsd, w_um=W_UM, l_um=L_UM, model='pmos180'):
     id_thresh = 1e-13
     gmid = np.where(id_ > id_thresh, gm / id_, np.nan)
     ft   = np.where(cgg > 0, gm / (2.0 * np.pi * cgg), np.nan)
+    # Remove spike artifacts: interior points where fT < 10% of both finite neighbours.
+    _ft_pad = np.where(np.isfinite(ft), ft, np.inf)
+    _spike  = (np.isfinite(ft) &
+               (ft < 0.1 * np.minimum(
+                   np.concatenate([[np.inf], _ft_pad[:-1]]),
+                   np.concatenate([_ft_pad[1:], [np.inf]]))))
+    ft = np.where(_spike, np.nan, ft)
     id_w = id_ / (w_um * 1e-6)
     vov  = vsg - vth
 
