@@ -5,6 +5,9 @@ description: "gm/ID transistor characterization and design methodology, based on
 
 # gm/ID Characterization and Design Skill
 
+> **Important — do not modify skill files during normal use.**
+> All code edits, new scripts, plots, and simulation outputs should go into the user's **project working directory** (outside `.claude/`), not into this skill folder. Only modify the skill assets (`assets/`, `SKILL.md`, `references/`) when the user explicitly asks to improve or extend the skill itself.
+
 **Dependency**: `ngspice` skill (netlist execution, wrdata parsing). Model files are built in — the `transistor-models` skill is not required.
 
 ## Asset Files
@@ -351,6 +354,32 @@ With W, RL, and Vgs in hand, use the `ngspice` skill to build a `.control` block
 - **DC operating point**: verify `@m1[id]`, `@m1[gm]`, `@m1[gds]` against design values
 - **AC frequency response**: `ac dec 200 1e5 1e10` → read `vdb(vout)` → verify low-frequency gain and −3 dB frequency
 - **Plotting**: save frequency-gain data with `wrdata`, plot a Bode magnitude response using matplotlib
+
+---
+
+## Self-Validation
+
+This skill can verify its own simulation output against semiconductor physics
+without any external reference.  Run from the project working directory:
+
+```bash
+python validate_gmoverid.py [model] [L_um]
+python validate_gmoverid.py                    # nmos180 @ 180 nm
+python validate_gmoverid.py nmos45hp 0.045
+```
+
+Five tests are executed automatically and each prints PASS / FAIL:
+
+| # | Test | What a failure means |
+|---|------|----------------------|
+| 1 | Weak-inversion limit — peak gm/ID in [25, 32] V^-1 | gm extraction error near Id ≈ 0 |
+| 2 | ID/W strict monotonicity (zero non-monotone steps) | Interpolation oscillation in gm or Id |
+| 3 | L-doubling scaling of gm·ro (×1.5–5) and fT (×0.15–0.70) | Model ignores CLM or capacitance grows unexpectedly |
+| 4 | fT × gm/ID product peaks at gm/ID in [8, 18] V^-1 | Cgg or gm mismatch vs physics |
+| 5 | gm·ro changes ≥ 10 % when Vds sweeps from 0.25·VDD to 0.75·VDD | Model ignores channel-length modulation |
+
+For the physics derivation and failure-diagnosis guidance behind each threshold,
+see `references/validation.md`.
 
 ---
 
