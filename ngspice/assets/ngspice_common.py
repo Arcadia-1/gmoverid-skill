@@ -47,6 +47,32 @@ def find_ngspice():
     return "ngspice"
 
 
+def check_ngspice():
+    """Verify ngspice is on PATH and print its version. Exits with an error if not found."""
+    exe = find_ngspice()
+    if shutil.which(exe) is None:
+        sys.exit(
+            f"\nERROR: ngspice not found on PATH (looked for '{exe}').\n"
+            "Install ngspice and add its bin directory to PATH.\n"
+            "  Windows : https://ngspice.sourceforge.io/download.html\n"
+            "            (or: choco install ngspice)\n"
+            "  macOS   : brew install ngspice\n"
+            "  Ubuntu  : sudo apt install ngspice\n"
+            "  Fedora  : sudo dnf install ngspice\n"
+            "See SKILL.md — Prerequisites for full details.\n"
+        )
+    try:
+        result = subprocess.run(
+            [exe, "-v"],
+            capture_output=True, text=True, timeout=10,
+        )
+        raw = strip_ansi((result.stdout + result.stderr).strip())
+        version_line = raw.splitlines()[0] if raw else "(version unknown)"
+    except Exception as e:
+        version_line = f"(could not determine version: {e})"
+    print(f"  ngspice: {version_line}")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Template renderer
 # ─────────────────────────────────────────────────────────────────────────────

@@ -13,7 +13,86 @@ description: "ngspice simulation tutorial and template skill. Provides nine stan
 
 **Dependencies:** system-installed `ngspice`, Python 3 with `numpy`, `matplotlib`, `scipy`.
 
-## Asset Files
+---
+
+## Prerequisites & Installation
+
+### Installing ngspice
+
+**Windows**
+
+Option A — official installer (recommended):
+1. Download the latest installer from https://ngspice.sourceforge.io/download.html
+2. Run the installer; note the install path (e.g. `C:\Program Files\ngspice\bin`)
+3. Add that `bin` folder to your system PATH:
+   - Search "environment variables" → Edit the system environment variables → Environment Variables → select `Path` → Edit → New → paste the path
+
+Option B — Chocolatey:
+```
+choco install ngspice
+```
+
+Option C — winget:
+```
+winget install ngspice
+```
+
+> **Windows note:** the installer provides two executables: `ngspice.exe` (opens a console window) and `ngspice_con.exe` (console-subsystem, no popup window — preferred for scripted use). The skill's `find_ngspice()` automatically prefers `ngspice_con` when it is on PATH.
+
+**macOS**
+```bash
+brew install ngspice
+```
+
+**Ubuntu / Debian**
+```bash
+sudo apt install ngspice
+```
+
+**Fedora / RHEL**
+```bash
+sudo dnf install ngspice
+```
+
+---
+
+### Verifying the Installation
+
+**From the terminal** — check the executable is on PATH and print its version:
+```bash
+ngspice -v          # most platforms
+ngspice_con -v      # Windows (preferred)
+```
+
+Expected output (version number will vary):
+```
+ngspice-44 : Circuit level simulation program
+```
+
+**From Python** — `ngspice_common.py` provides `check_ngspice()` for a one-shot pre-flight check. Run it once after installing to confirm everything is working:
+```python
+from ngspice_common import check_ngspice
+check_ngspice()     # prints version, or exits with install instructions
+```
+
+**Quick smoke test** (simplest simulation, good for confirming the install end-to-end):
+```bash
+python run_tran_rc_charging.py
+# Expected: ngspice runs, plots/tran_rc_charging.png is created
+```
+
+---
+
+### PATH Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `ngspice: command not found` | Not installed or not on PATH | Install ngspice; add bin dir to PATH |
+| Script hangs at simulation step | `ngspice` found but wrong binary (GUI mode) | Use `ngspice_con` on Windows, or ensure `-b` flag works |
+| `UnicodeEncodeError` on Windows | GBK console encoding | Set `PYTHONUTF8=1` before running |
+| Plots not created, exit code ≠ 0 | ngspice ran but netlist failed | Check `logs/` for the simulation log |
+
+---
 
 ```
 assets/
