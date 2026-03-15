@@ -39,6 +39,44 @@ winget install ngspice
 
 > **Windows note:** the installer provides two executables: `ngspice.exe` (opens a console window) and `ngspice_con.exe` (console-subsystem, no popup window — preferred for scripted use). The skill's `find_ngspice()` automatically prefers `ngspice_con` when it is on PATH.
 
+Option D — 中国网络环境 / winget 不可用时的替代方案：
+
+在中国网络环境下，winget 源连接可能失败（`0x8a15000f`），Chocolatey 未预装，SourceForge 下载页面重定向也会导致工具无法直接下载。以下方法通过获取直链 + curl 下载 7z 包 + Python 解压来完成安装。
+
+1. 获取真实下载直链：
+```bash
+curl -s -L -I "https://sourceforge.net/projects/ngspice/files/ng-spice-rework/45.2/ngspice-45.2_64.7z/download" 2>&1 | grep -i "location"
+```
+输出中最后一个 `location:` 即为直链，形如 `https://twds.dl.sourceforge.net/project/ngspice/ng-spice-rework/45.2/ngspice-45.2_64.7z?viasf=1`（`twds` 为台湾镜像，从中国大陆访问速度较快）。
+
+2. 用 curl 下载（约 9.8 MB）：
+```bash
+curl -L -o ngspice-45.2_64.7z "https://twds.dl.sourceforge.net/project/ngspice/ng-spice-rework/45.2/ngspice-45.2_64.7z?viasf=1"
+```
+
+3. 用 Python 解压（系统无 7-Zip 时的替代方案）：
+```bash
+pip install py7zr
+python -c "
+import py7zr, pathlib
+out = pathlib.Path('ngspice')
+out.mkdir(exist_ok=True)
+with py7zr.SevenZipFile('ngspice-45.2_64.7z', 'r') as z:
+    z.extractall(path=str(out))
+print('done')
+"
+```
+解压后结构：`ngspice/Spice64/bin/ngspice.exe` 和 `ngspice_con.exe`。
+
+4. 将 bin 目录加入当前 shell 的 PATH：
+```bash
+export PATH="$(pwd)/ngspice/Spice64/bin:$PATH"
+ngspice_con -v   # 验证：应输出 ngspice-45.2
+```
+若需永久生效，将该路径加入系统环境变量（控制面板 → 系统 → 高级系统设置 → 环境变量 → Path）。
+
+> **安装说明请阅读** `H:\gmoverid-skill\ngspice\SKILL.md`
+
 **macOS**
 ```bash
 brew install ngspice
