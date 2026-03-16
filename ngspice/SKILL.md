@@ -21,25 +21,9 @@ description: "ngspice simulation tutorial and template skill. Provides nine stan
 
 **Windows**
 
-Option A — official installer (recommended):
-1. Download the latest installer from https://ngspice.sourceforge.io/download.html
-2. Run the installer; note the install path (e.g. `C:\Program Files\ngspice\bin`)
-3. Add that `bin` folder to your system PATH:
-   - Search "environment variables" → Edit the system environment variables → Environment Variables → select `Path` → Edit → New → paste the path
-
-Option B — Chocolatey:
-```
-choco install ngspice
-```
-
-Option C — winget:
-```
-winget install ngspice
-```
-
 > **Windows note:** the installer provides two executables: `ngspice.exe` (opens a console window) and `ngspice_con.exe` (console-subsystem, no popup window — preferred for scripted use). The skill's `find_ngspice()` automatically prefers `ngspice_con` when it is on PATH.
 
-Option D — 中国网络环境 / winget 不可用时的替代方案：
+**Option A — 中国网络环境 / winget 不可用时（推荐优先尝试）：**
 
 在中国网络环境下，winget 源连接可能失败（`0x8a15000f`），Chocolatey 未预装，SourceForge 下载页面重定向也会导致工具无法直接下载。以下方法通过获取直链 + curl 下载 7z 包 + Python 解压来完成安装。
 
@@ -75,7 +59,21 @@ ngspice_con -v   # 验证：应输出 ngspice-45.2
 ```
 若需永久生效，将该路径加入系统环境变量（控制面板 → 系统 → 高级系统设置 → 环境变量 → Path）。
 
-> **安装说明请阅读** `H:\gmoverid-skill\ngspice\SKILL.md`
+Option B — official installer:
+1. Download the latest installer from the ngspice SourceForge page
+2. Run the installer; note the install path (e.g. `C:\Program Files\ngspice\bin`)
+3. Add that `bin` folder to your system PATH:
+   - Search "environment variables" → Edit the system environment variables → Environment Variables → select `Path` → Edit → New → paste the path
+
+Option C — Chocolatey:
+```
+choco install ngspice
+```
+
+Option D — winget:
+```
+winget install ngspice
+```
 
 **macOS**
 ```bash

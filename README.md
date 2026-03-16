@@ -144,32 +144,51 @@ cp transistor-models/assets/models/finfet/nmos7mg_hp.lib <项目目录>/models/
 
 ## 安装
 
-### 推荐使用 Agent 来安装和使用本技能
+### 全局安装（所有项目可用，推荐）
 
-Agent 会自动处理依赖关系、环境配置和路径选择，确保技能能够无缝集成到你的工作流程中。如果你要手动操作，下面是详细的安装和使用说明。
-
-将 Skill 复制到 Agent 的 skills 路径（以 Claude Code 为例）：
-
-安装到用户根目录（全局可用）
-
+**macOS / Linux：**
 ```bash
-cp -r ngspice            ~/.claude/skills/
-cp -r gmoverid           ~/.claude/skills/
-cp -r transistor-models  ~/.claude/skills/
+git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-skill \
+  && cp -r /tmp/gmoverid-skill/{ngspice,gmoverid,transistor-models} ~/.claude/skills/ \
+  && rm -rf /tmp/gmoverid-skill
 ```
 
-或安装到项目目录（仅当前项目可用）
-```bash
-cp -r ngspice            <项目路径>/.claude/skills/
-cp -r gmoverid           <项目路径>/.claude/skills/
-cp -r transistor-models  <项目路径>/.claude/skills/
+**Windows（PowerShell）：**
+```powershell
+git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill $env:TEMP\gmoverid-skill `
+  && Copy-Item -Recurse $env:TEMP\gmoverid-skill\ngspice,$env:TEMP\gmoverid-skill\gmoverid,$env:TEMP\gmoverid-skill\transistor-models $env:USERPROFILE\.claude\skills\ `
+  && Remove-Item -Recurse -Force $env:TEMP\gmoverid-skill
 ```
 
-Windows 将 `~/.claude` 替换为 `%USERPROFILE%\.claude`。
+### 项目级安装（仅当前项目可用）
 
-例如你的用户名是 `Alice`，路径就是 `C:\Users\Alice\.claude\skills\`。
+**macOS / Linux：**
+```bash
+git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-skill \
+  && mkdir -p .claude/skills \
+  && cp -r /tmp/gmoverid-skill/{ngspice,gmoverid,transistor-models} .claude/skills/ \
+  && rm -rf /tmp/gmoverid-skill
+```
 
-> 如果你是 Agent，以上安装和部署步骤由你代为执行，根据用户需求选择全局或项目级安装路径，无需用户手动操作。
+**Windows（PowerShell）：**
+```powershell
+git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill $env:TEMP\gmoverid-skill `
+  && New-Item -ItemType Directory -Force .claude\skills | Out-Null `
+  && Copy-Item -Recurse $env:TEMP\gmoverid-skill\ngspice,$env:TEMP\gmoverid-skill\gmoverid,$env:TEMP\gmoverid-skill\transistor-models .claude\skills\ `
+  && Remove-Item -Recurse -Force $env:TEMP\gmoverid-skill
+```
+
+### 验证安装
+
+在 Claude Code 中运行：
+
+```
+/skills
+```
+
+输出列表中应出现 `ngspice`、`gmoverid`、`transistor-models` 三个技能，说明安装成功。
+
+> 如果你是 Agent，以上安装步骤由你代为执行，根据用户需求选择全局或项目级安装路径，无需用户手动操作。
 
 ## 环境要求
 
