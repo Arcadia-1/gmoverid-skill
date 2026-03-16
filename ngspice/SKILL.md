@@ -11,122 +11,20 @@ description: "ngspice simulation tutorial and template skill. Provides nine stan
 > the skill's `assets/` folder or `SKILL.md`.  Only edit skill-internal files
 > when the user explicitly asks to improve or extend the skill itself.
 
-**Dependencies:** system-installed `ngspice`, Python 3 with `numpy`, `matplotlib`, `scipy`.
-
 ---
 
 ## Prerequisites & Installation
 
-### Installing ngspice
+**Dependencies:** system-installed `ngspice`, Python 3 with `numpy ≥ 1.20`, `matplotlib ≥ 3.3`, `scipy ≥ 1.7` (NumPy 1.x and 2.x both supported).
 
-**Windows**
+If `ngspice` is not found when a script starts, `check_ngspice()` will print a brief
+error and exit.  Full platform-specific install instructions — including a portable
+Windows install that requires no PATH change, Chinese-network pip mirror fallbacks,
+and `python-dateutil`/`six` troubleshooting — are in:
 
-> **Windows note:** the installer provides two executables: `ngspice.exe` (opens a console window) and `ngspice_con.exe` (console-subsystem, no popup window — preferred for scripted use). The skill's `find_ngspice()` automatically prefers `ngspice_con` when it is on PATH.
-
-**Option A — 中国网络环境 / winget 不可用时（推荐优先尝试）：**
-
-在中国网络环境下，winget 源连接可能失败（`0x8a15000f`），Chocolatey 未预装，SourceForge 下载页面重定向也会导致工具无法直接下载。以下方法通过获取直链 + curl 下载 7z 包 + Python 解压来完成安装。
-
-1. 获取真实下载直链：
-```bash
-curl -s -L -I "https://sourceforge.net/projects/ngspice/files/ng-spice-rework/45.2/ngspice-45.2_64.7z/download" 2>&1 | grep -i "location"
 ```
-输出中最后一个 `location:` 即为直链，形如 `https://twds.dl.sourceforge.net/project/ngspice/ng-spice-rework/45.2/ngspice-45.2_64.7z?viasf=1`（`twds` 为台湾镜像，从中国大陆访问速度较快）。
-
-2. 用 curl 下载（约 9.8 MB）：
-```bash
-curl -L -o ngspice-45.2_64.7z "https://twds.dl.sourceforge.net/project/ngspice/ng-spice-rework/45.2/ngspice-45.2_64.7z?viasf=1"
+references/installation.md
 ```
-
-3. 用 Python 解压（系统无 7-Zip 时的替代方案）：
-```bash
-pip install py7zr
-python -c "
-import py7zr, pathlib
-out = pathlib.Path('ngspice')
-out.mkdir(exist_ok=True)
-with py7zr.SevenZipFile('ngspice-45.2_64.7z', 'r') as z:
-    z.extractall(path=str(out))
-print('done')
-"
-```
-解压后结构：`ngspice/Spice64/bin/ngspice.exe` 和 `ngspice_con.exe`。
-
-4. 将 bin 目录加入当前 shell 的 PATH：
-```bash
-export PATH="$(pwd)/ngspice/Spice64/bin:$PATH"
-ngspice_con -v   # 验证：应输出 ngspice-45.2
-```
-若需永久生效，将该路径加入系统环境变量（控制面板 → 系统 → 高级系统设置 → 环境变量 → Path）。
-
-Option B — official installer:
-1. Download the latest installer from the ngspice SourceForge page
-2. Run the installer; note the install path (e.g. `C:\Program Files\ngspice\bin`)
-3. Add that `bin` folder to your system PATH:
-   - Search "environment variables" → Edit the system environment variables → Environment Variables → select `Path` → Edit → New → paste the path
-
-Option C — Chocolatey:
-```
-choco install ngspice
-```
-
-Option D — winget:
-```
-winget install ngspice
-```
-
-**macOS**
-```bash
-brew install ngspice
-```
-
-**Ubuntu / Debian**
-```bash
-sudo apt install ngspice
-```
-
-**Fedora / RHEL**
-```bash
-sudo dnf install ngspice
-```
-
----
-
-### Verifying the Installation
-
-**From the terminal** — check the executable is on PATH and print its version:
-```bash
-ngspice -v          # most platforms
-ngspice_con -v      # Windows (preferred)
-```
-
-Expected output (version number will vary):
-```
-ngspice-44 : Circuit level simulation program
-```
-
-**From Python** — `ngspice_common.py` provides `check_ngspice()` for a one-shot pre-flight check. Run it once after installing to confirm everything is working:
-```python
-from ngspice_common import check_ngspice
-check_ngspice()     # prints version, or exits with install instructions
-```
-
-**Quick smoke test** (simplest simulation, good for confirming the install end-to-end):
-```bash
-python run_tran_rc_charging.py
-# Expected: ngspice runs, plots/tran_rc_charging.png is created
-```
-
----
-
-### PATH Troubleshooting
-
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| `ngspice: command not found` | Not installed or not on PATH | Install ngspice; add bin dir to PATH |
-| Script hangs at simulation step | `ngspice` found but wrong binary (GUI mode) | Use `ngspice_con` on Windows, or ensure `-b` flag works |
-| `UnicodeEncodeError` on Windows | GBK console encoding | Set `PYTHONUTF8=1` before running |
-| Plots not created, exit code ≠ 0 | ngspice ran but netlist failed | Check `logs/` for the simulation log |
 
 ---
 
@@ -444,3 +342,9 @@ See `references/conventions.md` for full details:
 - §4  Output parsing formats
 - §5  Physical sanity-check values quick reference
 - §6  Common errors and fixes
+
+See `references/installation.md` for installation details:
+- §1  Windows (portable 7z, official installer, choco, winget)
+- §2  Verifying the installation
+- §3  Python dependencies, `six`/dateutil, pip mirror fallbacks
+- §4  PATH troubleshooting table

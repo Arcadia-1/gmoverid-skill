@@ -8,6 +8,7 @@ Provides path constants, ngspice runner, and output parsers used by all
 simulation scripts.
 """
 
+import os
 import subprocess
 import sys
 import re
@@ -41,25 +42,46 @@ def spath(p):
 
 
 def find_ngspice():
-    """Return the ngspice executable name (prefer ngspice_con on Windows)."""
+    """Return the ngspice executable name or path.
+
+    Search order:
+    1. Project-local portable install at <BASE_DIR>/ngspice/Spice64/bin/
+       (works without any PATH change after extracting the 7z archive there).
+    2. System PATH: prefer ngspice_con (no pop-up window on Windows).
+    """
+    local_bin = BASE_DIR / "ngspice" / "Spice64" / "bin"
+    if local_bin.is_dir():
+        os.environ["PATH"] = str(local_bin) + os.pathsep + os.environ.get("PATH", "")
+
     if shutil.which("ngspice_con"):
         return "ngspice_con"
+    if shutil.which("ngspice"):
+        return "ngspice"
+
+    # Last resort: direct path inside the local portable install
+    for name in ("ngspice_con.exe", "ngspice.exe"):
+        p = local_bin / name
+        if p.exists():
+            return str(p)
+
     return "ngspice"
 
 
 def check_ngspice():
-    """Verify ngspice is on PATH and print its version. Exits with an error if not found."""
+    """Verify ngspice is on PATH (or local portable install) and print its version.
+    Exits with a friendly error message if not found."""
     exe = find_ngspice()
-    if shutil.which(exe) is None:
+    if not shutil.which(exe) and not Path(exe).exists():
         sys.exit(
-            f"\nERROR: ngspice not found on PATH (looked for '{exe}').\n"
-            "Install ngspice and add its bin directory to PATH.\n"
-            "  Windows : https://ngspice.sourceforge.io/download.html\n"
-            "            (or: choco install ngspice)\n"
-            "  macOS   : brew install ngspice\n"
-            "  Ubuntu  : sudo apt install ngspice\n"
-            "  Fedora  : sudo dnf install ngspice\n"
-            "See SKILL.md — Prerequisites for full details.\n"
+            "\nERROR: ngspice not found.\n"
+            "See references/installation.md for platform-specific instructions,\n"
+            "including a portable (no-admin, no-PATH-change) Windows install.\n\n"
+            "Quick summary:\n"
+            "  Windows  — place ngspice/Spice64/bin/ inside your project dir (auto-detected),\n"
+            "             or: choco install ngspice / winget install ngspice\n"
+            "  macOS    — brew install ngspice\n"
+            "  Ubuntu   — sudo apt install ngspice\n"
+            "  Fedora   — sudo dnf install ngspice\n"
         )
     try:
         result = subprocess.run(

@@ -52,7 +52,8 @@ def plot_all(results):
             v_sqrt_hz = r["noise_data"][:, 1]
             floor         = np.sqrt(4 * 1.38e-23 * 300 * r["R"])
             ktc_uv_theory = np.sqrt(1.38e-23 * 300 / r["C"]) * 1e6
-            ktc_uv_sim    = np.sqrt(np.trapezoid(v_sqrt_hz**2, freq)) * 1e6
+            _trapz        = getattr(np, "trapezoid", np.trapz)  # NumPy 1.x / 2.x compat
+            ktc_uv_sim    = np.sqrt(_trapz(v_sqrt_hz**2, freq)) * 1e6
             ax2.loglog(freq, v_sqrt_hz, color=r["color_noise"], linewidth=2,
                        label=(f"{r['label']}  "
                               f"(√4kTR={floor*1e9:.1f} nV/√Hz,  "
