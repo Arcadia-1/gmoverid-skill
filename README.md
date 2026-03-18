@@ -146,36 +146,19 @@ cp transistor-models/assets/models/finfet/nmos7mg_hp.lib <项目目录>/models/
 
 ### 全局安装（所有项目可用，推荐）
 
-**macOS / Linux：**
 ```bash
 git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-skill \
   && cp -r /tmp/gmoverid-skill/{ngspice,gmoverid,transistor-models} ~/.claude/skills/ \
   && rm -rf /tmp/gmoverid-skill
 ```
 
-**Windows（PowerShell）：**
-```powershell
-git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill $env:TEMP\gmoverid-skill `
-  && Copy-Item -Recurse $env:TEMP\gmoverid-skill\ngspice,$env:TEMP\gmoverid-skill\gmoverid,$env:TEMP\gmoverid-skill\transistor-models $env:USERPROFILE\.claude\skills\ `
-  && Remove-Item -Recurse -Force $env:TEMP\gmoverid-skill
-```
-
 ### 项目级安装（仅当前项目可用）
 
-**macOS / Linux：**
 ```bash
 git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-skill \
   && mkdir -p .claude/skills \
   && cp -r /tmp/gmoverid-skill/{ngspice,gmoverid,transistor-models} .claude/skills/ \
   && rm -rf /tmp/gmoverid-skill
-```
-
-**Windows（PowerShell）：**
-```powershell
-git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill $env:TEMP\gmoverid-skill `
-  && New-Item -ItemType Directory -Force .claude\skills | Out-Null `
-  && Copy-Item -Recurse $env:TEMP\gmoverid-skill\ngspice,$env:TEMP\gmoverid-skill\gmoverid,$env:TEMP\gmoverid-skill\transistor-models .claude\skills\ `
-  && Remove-Item -Recurse -Force $env:TEMP\gmoverid-skill
 ```
 
 ### 验证安装
