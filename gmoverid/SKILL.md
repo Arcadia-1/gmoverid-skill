@@ -101,29 +101,27 @@ On Windows prefer `Microsoft YaHei`; on Linux/macOS verify the font is installed
 
 ### Core Idea of the gm/ID Methodology
 
-**gm/ID (transconductance efficiency) is the pivot quantity linking circuit specifications to device dimensions.**
+**gm/ID (transconductance efficiency) links circuit specs to device dimensions** via simulation-generated lookup tables, replacing error-prone long-channel equations (gm = 2Id/Vov) that fail in advanced nodes (≤ 180 nm).
 
-Traditional design relies on long-channel model equations (gm = 2Id/Vov) to compute device sizes; errors are severe in advanced nodes (≤ 180 nm). The gm/ID method abandons equations in favor of simulation-generated design charts (lookup tables), using gm/ID as the single independent variable to express all key device performance parameters:
+gm/ID maps to four W-independent quantities — generate the chart once at unit width, use for any W:
 
-```
-gm/ID  ──►  Id/W   (current-density curve → determines W)
-       ──►  fT     (transit frequency → determines speed)
-       ──►  gm·ro  (intrinsic gain → determines gain ceiling)
-       ──►  Vgs    (uniquely determines the bias point)
-```
+| gm/ID maps to | Determines |
+|---------------|-----------|
+| Id/W (current density) | Transistor width W |
+| fT (transit frequency) | Speed |
+| gm·ro (intrinsic gain) | Gain ceiling |
+| Vgs (gate-source voltage) | Bias point |
 
-All four curves are **independent of transistor width W** — devices of different W share exactly the same Id/W, fT, and gm·ro values at the same gm/ID point. This is the foundation of the methodology: the design chart needs to be generated only once (at unit width), and it applies directly to any W.
-
-**gm/ID is the trade-off axis for three design objectives:**
+**gm/ID is the trade-off axis:**
 
 | Design priority | Direction of gm/ID | Reason |
 |----------------|:-----------------:|--------|
-| High speed (fT↑) | Low gm/ID (strong inversion) | High Vov → fast |
-| High gain (gm·ro↑) | High gm/ID (weak/moderate inversion) | Closer to subthreshold |
-| Low power (Id↓, same W) | High gm/ID | Id/W decreases as gm/ID increases |
-| Minimum area (W↓, same Id) | Low gm/ID | Id/W decreases as gm/ID increases |
+| High speed (fT↑) | Low (strong inversion) | High Vov → fast |
+| High gain (gm·ro↑) | High (weak/moderate inversion) | Closer to subthreshold |
+| Low power (Id↓, same W) | High | Id/W decreases with rising gm/ID |
+| Minimum area (W↓, same Id) | Low | Id/W decreases with rising gm/ID |
 
-> Note: area and power optimization point in opposite directions — this is the central trade-off in gm/ID design.
+> Area and power optimization point in opposite directions — this is the central trade-off in gm/ID design.
 
 ---
 
