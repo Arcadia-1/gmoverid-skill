@@ -9,10 +9,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Arcadia-1/gmoverid-skill/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/Arcadia-1/gmoverid-skill?style=flat-square"></a>
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
-  <img alt="Python 3.x" src="https://img.shields.io/badge/Python-3.x-3776AB?style=flat-square&logo=python&logoColor=white">
-  <img alt="ngspice required" src="https://img.shields.io/badge/ngspice-required-orange?style=flat-square">
+  <a href="https://github.com/Arcadia-1/gmoverid-skill/stargazers"><img src="https://img.shields.io/github/stars/Arcadia-1/gmoverid-skill?style=flat-square&color=f5c542&logo=github" alt="GitHub stars"></a>
+  <a href="https://github.com/Arcadia-1/gmoverid-skill/network/members"><img src="https://img.shields.io/github/forks/Arcadia-1/gmoverid-skill?style=flat-square&color=f5c542" alt="GitHub forks"></a>
+  <a href="https://github.com/Arcadia-1/gmoverid-skill/issues"><img src="https://img.shields.io/github/issues/Arcadia-1/gmoverid-skill?style=flat-square&color=3fb950" alt="Open Issues"></a>
+  <a href="https://github.com/Arcadia-1/gmoverid-skill/commits/main"><img src="https://img.shields.io/github/last-commit/Arcadia-1/gmoverid-skill?style=flat-square&color=3fb950" alt="Last Commit"></a>
+</p>
+
+<p align="center">
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.x-blue.svg" alt="Python 3.x"></a>
+  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT">
+  <a href="https://github.com/Arcadia-1/gmoverid-skill/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
+  <img src="https://img.shields.io/badge/ngspice-required-orange.svg" alt="ngspice required">
 </p>
 
 Three skill packages that give an Agent the ability to design and simulate analog circuits: **ngspice basics** / **gm/ID design** / **PTM model library**.
