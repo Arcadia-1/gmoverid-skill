@@ -1,150 +1,158 @@
-# gmoverid-skill
+<p align="center">
+  <img src="openclaw.png" alt="gmoverid-skill" width="100%">
+</p>
 
-![Stars](https://img.shields.io/github/stars/Arcadia-1/gmoverid-skill?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
-![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=flat-square&logo=python&logoColor=white)
-![ngspice](https://img.shields.io/badge/ngspice-required-orange?style=flat-square)
+<h1 align="center">gmoverid-skill</h1>
 
-三个让 Agent 具有设计模拟电路能力的技能包：**ngspice 入门** / **gm/ID 设计** / **PTM 模型库**。
+<p align="center">
+  <a href="./README.zh-CN.md"><img alt="Chinese README" src="https://img.shields.io/badge/README-%E4%B8%AD%E6%96%87-blue?style=for-the-badge"></a>
+</p>
 
-> **如果你是人类**：下面有示例图片，可以直观了解每个技能的输出效果。
+<p align="center">
+  <a href="https://github.com/Arcadia-1/gmoverid-skill/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/Arcadia-1/gmoverid-skill?style=flat-square"></a>
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
+  <img alt="Python 3.x" src="https://img.shields.io/badge/Python-3.x-3776AB?style=flat-square&logo=python&logoColor=white">
+  <img alt="ngspice required" src="https://img.shields.io/badge/ngspice-required-orange?style=flat-square">
+</p>
 
-> **如果你是 AI Agent**：跳过图片，直接看 [安装](#安装) 说明。每个技能的完整指令在各自的 `SKILL.md`，可运行脚本和模型文件在 `assets/` 目录内。
+Three skill packages that give an Agent the ability to design and simulate analog circuits: **ngspice basics** / **gm/ID design** / **PTM model library**.
 
-## 技能总览
+> **If you are human**: the examples below include images that show each skill's output at a glance.
 
-| 技能 | 定位 | 功能 |
+> **If you are an AI Agent**: skip the images and go directly to [Installation](#installation). The full instructions for each skill are in its own `SKILL.md`; runnable scripts and model files are in the `assets/` directories.
+
+## Skill Overview
+
+| Skill | Positioning | Features |
 |------|------|------|
-| **ngspice** | 入门 | 9 类标准仿真示例（DC / AC / Tran / Noise），从零学 SPICE |
-| **gmoverid** | 进阶 | gm/ID 表征仿真 + 设计 API，自动反查 W、Id、Vgs、fT、gm·ro |
-| **transistor-models** | 模型库 | PTM 全系列模型文件（体硅 65–180nm、HP/LP 22–45nm、FinFET 7–20nm） |
+| **ngspice** | Beginner | 9 standard simulation examples (DC / AC / Tran / Noise) for learning SPICE from scratch |
+| **gmoverid** | Advanced | gm/ID characterization simulation + design API, with automatic lookup of W, Id, Vgs, fT, and gm*ro |
+| **transistor-models** | Model library | Full PTM model files (bulk silicon 65-180nm, HP/LP 22-45nm, FinFET 7-20nm) |
 
 ---
 
-## 技能1：ngspice
+## Skill 1: ngspice
 
-9 个仿真示例，覆盖模拟电路入门核心知识点：
+9 simulation examples covering the core concepts of introductory analog circuits:
 
-| # | 类型 | 描述 | 输出 |
+| # | Type | Description | Output |
 |---|------|------|------|
-| 1 | Tran | RC 充电电压与电流 | `tran_rc_charging.png` |
-| 2 | DC | NMOS Id-Vds 族曲线 | `dc_nmos_iv.png` |
-| 3 | AC | RC 低通滤波器频率响应 | `ac_rc_bw.png` |
-| 4 | Noise | RC 滤波器输出噪声谱密度 | `ac_rc_bw.png` |
-| 5 | Tran | 采样保持开关对比 | `sample_hold_compare.png` |
-| 6 | Tran | kT/C 噪声时域统计 | `tran_ktc_noise_hist.png` |
-| 7 | DC | NMOS 电流镜输出特性 | `dc_current_mirror.png` |
-| 8 | AC | 共源放大器 Bode 图 | `ac_cs_amp_bode.png` |
-| 9 | DC | 传输门导通电阻 | `dc_tgate_ron.png` |
+| 1 | Tran | RC charging voltage and current | `tran_rc_charging.png` |
+| 2 | DC | NMOS Id-Vds family of curves | `dc_nmos_iv.png` |
+| 3 | AC | RC low-pass filter frequency response | `ac_rc_bw.png` |
+| 4 | Noise | RC filter output noise spectral density | `ac_rc_bw.png` |
+| 5 | Tran | Sample-and-hold switch comparison | `sample_hold_compare.png` |
+| 6 | Tran | kT/C noise time-domain statistics | `tran_ktc_noise_hist.png` |
+| 7 | DC | NMOS current mirror output characteristics | `dc_current_mirror.png` |
+| 8 | AC | Common-source amplifier Bode plot | `ac_cs_amp_bode.png` |
+| 9 | DC | Transmission-gate on-resistance | `dc_tgate_ron.png` |
 
-运行方式见 [`ngspice/SKILL.md`](./ngspice/SKILL.md)，Agent 会自动部署资产并执行。
+See [`ngspice/SKILL.md`](./ngspice/SKILL.md) for usage. The Agent will automatically deploy the assets and run the examples.
 
-**NMOS Id-Vds 族曲线**
+**NMOS Id-Vds Family of Curves**
 
 ![NMOS Id-Vds](dc_nmos_iv.png)
 
-**RC 低通滤波器频率响应**
+**RC Low-Pass Filter Frequency Response**
 
-![RC 低通滤波器](ac_rc_bw.png)
+![RC low-pass filter](ac_rc_bw.png)
 
-**RC 充电电压与电流**
+**RC Charging Voltage and Current**
 
-![RC 充电](tran_rc_charging.png)
+![RC charging](tran_rc_charging.png)
 
-**kT/C 噪声时域统计**
+**kT/C Noise Time-Domain Statistics**
 
-![kT/C 噪声统计](tran_ktc_noise_hist.png)
+![kT/C noise statistics](tran_ktc_noise_hist.png)
 
 ---
 
-## 技能2：gmoverid
+## Skill 2: gmoverid
 
-每个工艺节点生成三套标准图：
+Each process node generates three sets of standard plots:
 
-**IV 特性图**（2×2）
-- Id vs Vov 线性坐标：清晰显示阈值和饱和电流
-- Id vs Vov 对数坐标：亚阈值斜率与约 7 个数量级动态范围
-- Id vs Vgs（0 → VDD 全扫描）
-- 输出特性 Id vs Vds（固定 Vgs 多条曲线）
+**IV Characteristic Plot** (2x2)
+- Id vs Vov in linear scale: clearly shows the threshold and saturation current
+- Id vs Vov in log scale: subthreshold slope and an approximately 7-decade dynamic range
+- Id vs Vgs (full sweep from 0 to VDD)
+- Output characteristics, Id vs Vds (multiple curves at fixed Vgs values)
 
-![IV 特性图](gmoverid_iv_nmos45hp_L45nm.png)
+![IV characteristic plot](gmoverid_iv_nmos45hp_L45nm.png)
 
-**gm/ID 四象限特性图**（2×2）
-- **gm/ID vs Vov**：完整的弱反型→强反型特性，含 BJT 极限 q/kT = 38.6 V⁻¹ 和 2/Vov 渐近线参考
-- **Id/W vs gm/ID**（对数 Y 轴）：电流密度随偏置变化，跨越约 3 个数量级
-- **fT vs gm/ID**：截止频率，PTM 180nm 峰值约 50 GHz，PTM 22nm HP 峰值超过 600 GHz
-- **gm·ro vs gm/ID**：本征增益随偏置点的分布；180nm 在弱反型区（gm/ID ≈ 20）约 40–42，22nm HP 仅 2–4（短沟道效应显著）
+**gm/ID Four-Quadrant Characteristic Plot** (2x2)
+- **gm/ID vs Vov**: full weak-inversion to strong-inversion behavior, including the BJT limit q/kT = 38.6 V^-1 and the 2/Vov asymptote reference
+- **Id/W vs gm/ID** (log Y-axis): current density as the bias point changes, spanning approximately 3 decades
+- **fT vs gm/ID**: cutoff frequency; PTM 180nm peaks at about 50 GHz, while PTM 22nm HP exceeds 600 GHz
+- **gm*ro vs gm/ID**: intrinsic gain distribution versus bias point; 180nm reaches about 40-42 in weak inversion (gm/ID ~= 20), while 22nm HP is only 2-4 because of significant short-channel effects
 
-![gm/ID 四象限特性图](gmoverid_nmos45hp_L45nm.png)
+![gm/ID four-quadrant characteristic plot](gmoverid_nmos45hp_L45nm.png)
 
-**栅电容图**
-- Cgg / Cgs / Cgd / Cgb vs Vgs：展示截止区→阈值→强反型各工作区的电容分布与转换
+**Gate Capacitance Plot**
+- Cgg / Cgs / Cgd / Cgb vs Vgs: shows capacitance distribution and transitions from cutoff to threshold to strong inversion
 
-**对比图**
-- 沟道长度对比（L = 180 / 360 / 1000 nm）：长沟道显著提升 gm·ro（可达 ~140），但 fT 相应降低
-- 跨节点对比（180nm SVT vs 22nm HP）：直观呈现工艺代际的速度–增益权衡
+**Comparison Plots**
+- Channel-length comparison (L = 180 / 360 / 1000 nm): longer channels significantly improve gm*ro (up to ~140), with a corresponding reduction in fT
+- Cross-node comparison (180nm SVT vs 22nm HP): clearly shows the speed-gain tradeoff across technology generations
 
-![栅电容图](gmid_nmos_caps_comp.png)
+![Gate capacitance plot](gmid_nmos_caps_comp.png)
 
-**设计 API**：给定 gm/ID 目标，自动反查 W、Id、Vgs、gm、fT、gm·ro
+**Design API**: given a gm/ID target, automatically looks up W, Id, Vgs, gm, fT, and gm*ro
 
 ```python
 from design_gmoverid import GmIdTable, print_op
 
 tbl = GmIdTable('nmos180', W=10.0, L=0.18, vds=0.9)
 
-op = tbl.size(gmid=15.0, Id=100e-6)   # 固定 gm/ID 和漏电流，求 W
-op = tbl.size_from_ft(5e9, W=20.0)    # fT ≥ 5 GHz，取最省电的工作点
+op = tbl.size(gmid=15.0, Id=100e-6)   # Fixed gm/ID and drain current; solve for W
+op = tbl.size_from_ft(5e9, W=20.0)    # fT >= 5 GHz; choose the lowest-power operating point
 print_op(op)
 ```
 
-首次调用自动运行 ngspice 仿真并缓存，再次调用直接读缓存。
+The first call automatically runs the ngspice simulation and caches the result. Later calls read directly from the cache.
 
-内置 **180 / 45 / 22 nm** 三个 PTM 模型，装好即可仿真。如果需要更多工艺节点，可以安装 `transistor-models` 技能。
+The package includes three built-in PTM models: **180 / 45 / 22 nm**. Once installed, it is ready for simulation. If you need more process nodes, install the `transistor-models` skill.
 
 ---
 
-## 技能3：transistor-models
+## Skill 3: transistor-models
 
-PTM（预测性晶体管模型，Predictive Technology Model）是亚利桑那州立大学（Arizona State University, ASU）维护的一套公开 SPICE 模型，用于在没有 PDK 的情况下做工艺探索和教学研究。这个技能把 [mec.umn.edu/ptm](https://mec.umn.edu/ptm) 上的全部模型打包进来：
+PTM (Predictive Technology Model) is a public SPICE model set maintained by Arizona State University (ASU), intended for process exploration and teaching or research when no PDK is available. This skill packages all models from [mec.umn.edu/ptm](https://mec.umn.edu/ptm):
 
-- 体硅传统：180 / 130 / 90 / 65 nm
-- 体硅 HP/LP：45 / 32 / 22 nm
-- PTM-MG FinFET（多栅）：20 / 16 / 14 / 10 / 7 nm，HP + LSTP
+- Traditional bulk silicon: 180 / 130 / 90 / 65 nm
+- Bulk silicon HP/LP: 45 / 32 / 22 nm
+- PTM-MG FinFET (multi-gate): 20 / 16 / 14 / 10 / 7 nm, HP + LSTP
 
-与 `gmoverid` 相互独立。`gmoverid` 已内置常用节点；需要 32nm LP、7nm FinFET 等时再装这个补全。
+It is independent of `gmoverid`. `gmoverid` already includes commonly used nodes; install this skill only when you need additional nodes such as 32nm LP or 7nm FinFET.
 
-按需从 `transistor-models/assets/models/` 复制 `.lib` 文件到项目 `models/` 目录：
+Copy the required `.lib` files from `transistor-models/assets/models/` into your project's `models/` directory as needed:
 
 ```bash
-cp transistor-models/assets/models/bulk_cmos/ptm32lp.lib <项目目录>/models/
-cp transistor-models/assets/models/finfet/nmos7mg_hp.lib <项目目录>/models/
+cp transistor-models/assets/models/bulk_cmos/ptm32lp.lib <project-dir>/models/
+cp transistor-models/assets/models/finfet/nmos7mg_hp.lib <project-dir>/models/
 ```
 
-文件命名规则：
-- `bulk_cmos/ptm{节点}{hp|lp}.lib` — 体硅 HP/LP，含 NMOS+PMOS（model name: `nmos` / `pmos`）
-- `bulk_cmos/ptm{节点}.lib` — 体硅传统，含 NMOS+PMOS
-- `finfet/{n|p}mos{节点}mg_{hp|lstp}.lib` — FinFET（model name: `nfet` / `pfet`）
+File naming rules:
+- `bulk_cmos/ptm{node}{hp|lp}.lib` - bulk silicon HP/LP, including NMOS + PMOS (model names: `nmos` / `pmos`)
+- `bulk_cmos/ptm{node}.lib` - traditional bulk silicon, including NMOS + PMOS
+- `finfet/{n|p}mos{node}mg_{hp|lstp}.lib` - FinFET (model names: `nfet` / `pfet`)
 
-详细参数表见 [`transistor-models/references/model_params.md`](./transistor-models/references/model_params.md)。
+For the detailed parameter table, see [`transistor-models/references/model_params.md`](./transistor-models/references/model_params.md).
 
+## Copyright Notice
 
-## 版权声明
+The model files are copyrighted by the Arizona State University PTM project and are free for academic research. Please cite the following when using them:
 
-模型文件版权归亚利桑那州立大学（Arizona State University）PTM 项目所有，免费用于学术研究。使用时请引用：
+- Bulk CMOS nodes:
+  > W. Zhao and Y. Cao, "New Generation of Predictive Technology Model for Sub-45 nm Early Design Exploration," *IEEE Transactions on Electron Devices*, vol. 53, no. 11, pp. 2816-2823, Nov. 2006. doi: [10.1109/TED.2006.884077](https://doi.org/10.1109/TED.2006.884077)
 
-- 体硅节点（Bulk CMOS）：
-  > W. Zhao and Y. Cao, "New Generation of Predictive Technology Model for Sub-45 nm Early Design Exploration," *IEEE Transactions on Electron Devices*, vol. 53, no. 11, pp. 2816–2823, Nov. 2006. doi: [10.1109/TED.2006.884077](https://doi.org/10.1109/TED.2006.884077)
-
-- PTM-MG FinFET 节点（仅限 `transistor-models` 中的 7–20nm 模型）：
-  > S. Sinha, G. Yeric, V. Chandra, B. Cline and Y. Cao, "Exploring sub-20nm FinFET design with Predictive Technology Models," *DAC 2012*, pp. 283–288. doi: [10.1145/2228360.2228414](https://doi.org/10.1145/2228360.2228414)
-
+- PTM-MG FinFET nodes (only the 7-20nm models in `transistor-models`):
+  > S. Sinha, G. Yeric, V. Chandra, B. Cline and Y. Cao, "Exploring sub-20nm FinFET design with Predictive Technology Models," *DAC 2012*, pp. 283-288. doi: [10.1145/2228360.2228414](https://doi.org/10.1145/2228360.2228414)
 
 ---
 
-## 安装
+## Installation
 
-### 全局安装（所有项目可用，推荐）
+### Global Installation (available to all projects, recommended)
 
 ```bash
 git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-skill \
@@ -152,7 +160,7 @@ git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-sk
   && rm -rf /tmp/gmoverid-skill
 ```
 
-### 项目级安装（仅当前项目可用）
+### Project-Level Installation (available only to the current project)
 
 ```bash
 git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-skill \
@@ -161,19 +169,19 @@ git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-sk
   && rm -rf /tmp/gmoverid-skill
 ```
 
-### 验证安装
+### Verify Installation
 
-在 Claude Code 中运行：
+Run the following in Claude Code:
 
 ```
 /skills
 ```
 
-输出列表中应出现 `ngspice`、`gmoverid`、`transistor-models` 三个技能，说明安装成功。
+The output should include the three skills `ngspice`, `gmoverid`, and `transistor-models`, indicating that installation succeeded.
 
-> 如果你是 Agent，以上安装步骤由你代为执行，根据用户需求选择全局或项目级安装路径，无需用户手动操作。
+> If you are an Agent, perform the installation steps above on behalf of the user. Choose either the global or project-level installation path according to the user's needs; no manual user action is required.
 
-## 环境要求
+## Requirements
 
-- [ngspice](http://ngspice.sourceforge.net/)（系统全局安装）
-- Python 3，依赖：`numpy`、`matplotlib`、`scipy`
+- [ngspice](http://ngspice.sourceforge.net/) (installed globally on the system)
+- Python 3, with dependencies: `numpy`, `matplotlib`, `scipy`
