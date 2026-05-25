@@ -5,10 +5,6 @@
 <h1 align="center">gmoverid-skill</h1>
 
 <p align="center">
-  <a href="./README.zh-CN.md"><img alt="Chinese README" src="https://img.shields.io/badge/README-%E4%B8%AD%E6%96%87-blue?style=for-the-badge"></a>
-</p>
-
-<p align="center">
   <a href="https://github.com/Arcadia-1/gmoverid-skill/stargazers"><img src="https://img.shields.io/github/stars/Arcadia-1/gmoverid-skill?style=flat-square&color=f5c542&logo=github" alt="GitHub stars"></a>
   <a href="https://github.com/Arcadia-1/gmoverid-skill/network/members"><img src="https://img.shields.io/github/forks/Arcadia-1/gmoverid-skill?style=flat-square&color=f5c542" alt="GitHub forks"></a>
   <a href="https://github.com/Arcadia-1/gmoverid-skill/issues"><img src="https://img.shields.io/github/issues/Arcadia-1/gmoverid-skill?style=flat-square&color=3fb950" alt="Open Issues"></a>
@@ -192,3 +188,7 @@ The output should include the three skills `ngspice`, `gmoverid`, and `transisto
 
 - [ngspice](http://ngspice.sourceforge.net/) (installed globally on the system)
 - Python 3, with dependencies: `numpy`, `matplotlib`, `scipy`
+
+<p align="center">
+  <a href="./README.zh-CN.md"><img alt="中文 README" src="https://img.shields.io/badge/README-%E4%B8%AD%E6%96%87-blue?style=for-the-badge"></a>
+</p>

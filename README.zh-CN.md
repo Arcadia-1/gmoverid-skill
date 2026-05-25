@@ -5,10 +5,6 @@
 <h1 align="center">gmoverid-skill</h1>
 
 <p align="center">
-  <a href="./README.md"><img alt="English README" src="https://img.shields.io/badge/README-English-blue?style=for-the-badge"></a>
-</p>
-
-<p align="center">
   <a href="https://github.com/Arcadia-1/gmoverid-skill/stargazers"><img src="https://img.shields.io/github/stars/Arcadia-1/gmoverid-skill?style=flat-square&color=f5c542&logo=github" alt="GitHub stars"></a>
   <a href="https://github.com/Arcadia-1/gmoverid-skill/network/members"><img src="https://img.shields.io/github/forks/Arcadia-1/gmoverid-skill?style=flat-square&color=f5c542" alt="GitHub forks"></a>
   <a href="https://github.com/Arcadia-1/gmoverid-skill/issues"><img src="https://img.shields.io/github/issues/Arcadia-1/gmoverid-skill?style=flat-square&color=3fb950" alt="Open Issues"></a>
@@ -194,3 +190,7 @@ git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-sk
 
 - [ngspice](http://ngspice.sourceforge.net/)（系统全局安装）
 - Python 3，依赖：`numpy`、`matplotlib`、`scipy`
+
+<p align="center">
+  <a href="./README.md"><img alt="English README" src="https://img.shields.io/badge/README-English-blue?style=for-the-badge"></a>
+</p>
