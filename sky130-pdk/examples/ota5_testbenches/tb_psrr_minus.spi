@@ -12,7 +12,10 @@ VINP vinp vss {VIC}
 VINN vinn vss {VIC}
 CLOAD vout vss {CL}
 
-.ac dec 40 1 1e9
-.meas ac avss_10hz_db FIND vdb(vout) AT=10
-.meas ac avss_1k_db FIND vdb(vout) AT=1k
+.control
+ac dec 40 1 1e9
+meas ac avss_10hz_db FIND vdb(vout) AT=10
+meas ac avss_1k_db FIND vdb(vout) AT=1k
+quit
+.endc
 .end

@@ -12,7 +12,10 @@ EVINP vinp 0 vcm 0 1
 EVINN vinn 0 vcm 0 1
 CLOAD vout 0 {CL}
 
-.ac dec 40 1 1e9
-.meas ac acm_10hz_db FIND vdb(vout) AT=10
-.meas ac acm_1k_db FIND vdb(vout) AT=1k
+.control
+ac dec 40 1 1e9
+meas ac acm_10hz_db FIND vdb(vout) AT=10
+meas ac acm_1k_db FIND vdb(vout) AT=1k
+quit
+.endc
 .end
