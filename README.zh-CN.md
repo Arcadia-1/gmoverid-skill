@@ -18,7 +18,7 @@
   <img src="https://img.shields.io/badge/ngspice-required-orange.svg" alt="ngspice required">
 </p>
 
-三个让 Agent 具有设计模拟电路能力的技能包：**ngspice 入门** / **gm/ID 设计** / **PTM 模型库**。
+四个让 Agent 具有设计模拟电路能力的技能包：**ngspice 入门** / **gm/ID 设计** / **PTM 模型库** / **Sky130A PDK 工作流**。
 
 > **如果你是人类**：下面有示例图片，可以直观了解每个技能的输出效果。
 
@@ -31,6 +31,7 @@
 | **ngspice** | 入门 | 9 类标准仿真示例（DC / AC / Tran / Noise），从零学 SPICE |
 | **gmoverid** | 进阶 | gm/ID 表征仿真 + 设计 API，自动反查 W、Id、Vgs、fT、gm·ro |
 | **transistor-models** | 模型库 | PTM 全系列模型文件（体硅 65–180nm、HP/LP 22–45nm、FinFET 7–20nm） |
+| **sky130-pdk** | 开源 PDK 工作流 | 用 Volare 安装/定位 Sky130A，并运行 ngspice PVT + Monte Carlo smoke 测试 |
 
 ---
 
@@ -141,6 +142,35 @@ cp transistor-models/assets/models/finfet/nmos7mg_hp.lib <项目目录>/models/
 
 详细参数表见 [`transistor-models/references/model_params.md`](./transistor-models/references/model_params.md)。
 
+---
+
+## 技能4：sky130-pdk
+
+Sky130A 是真实的开源 PDK 工作流，不是 PTM 模型文件。这个技能不把 PDK 数据本体放进仓库，而是说明如何用 Volare/open_pdks 安装或定位 Sky130A，以及如何运行 ngspice PVT + Monte Carlo smoke 测试。
+
+内置 smoke 示例：
+
+- NMOS Id-Vgs：覆盖 `tt/ff/ss/fs/sf` process corners，并统计 MC 电流分布。
+- 三级 CMOS ring oscillator：统计 process/MC 下的振荡频率。
+- 五管 OTA：统计 process/MC 下的低频小信号增益。
+- 成对的 `.scs` 和 ngspice `.spi` 版 ring oscillator / 五管 OTA 示例，以及一个面向 Sky130 用户电路网表子集的 SCS-to-SPI 转换器。
+
+典型安装：
+
+```bash
+python3 -m pip install --user volare
+volare enable --pdk sky130 c6d73a35f524070e85faff4a6a9eef49553ebc2b
+```
+
+典型模型入口：
+
+```spice
+.lib "$PDK_ROOT/sky130A/libs.tech/combined/continuous/sky130.lib.spice" tt
+.lib "$PDK_ROOT/sky130A/libs.tech/combined/continuous/sky130.lib.spice" mc
+```
+
+运行方式见 [`sky130-pdk/SKILL.md`](./sky130-pdk/SKILL.md)。
+
 
 ## 版权声明
 
@@ -161,7 +191,7 @@ cp transistor-models/assets/models/finfet/nmos7mg_hp.lib <项目目录>/models/
 
 ```bash
 git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-skill \
-  && cp -r /tmp/gmoverid-skill/{ngspice,gmoverid,transistor-models} ~/.claude/skills/ \
+  && cp -r /tmp/gmoverid-skill/{ngspice,gmoverid,transistor-models,sky130-pdk} ~/.claude/skills/ \
   && rm -rf /tmp/gmoverid-skill
 ```
 
@@ -170,7 +200,7 @@ git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-sk
 ```bash
 git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-skill \
   && mkdir -p .claude/skills \
-  && cp -r /tmp/gmoverid-skill/{ngspice,gmoverid,transistor-models} .claude/skills/ \
+  && cp -r /tmp/gmoverid-skill/{ngspice,gmoverid,transistor-models,sky130-pdk} .claude/skills/ \
   && rm -rf /tmp/gmoverid-skill
 ```
 
@@ -182,14 +212,14 @@ git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-sk
 /skills
 ```
 
-输出列表中应出现 `ngspice`、`gmoverid`、`transistor-models` 三个技能，说明安装成功。
+输出列表中应出现 `ngspice`、`gmoverid`、`transistor-models` 和 `sky130-pdk` 四个技能，说明安装成功。
 
 > 如果你是 Agent，以上安装步骤由你代为执行，根据用户需求选择全局或项目级安装路径，无需用户手动操作。
 
 ## 环境要求
 
 - [ngspice](http://ngspice.sourceforge.net/)（系统全局安装）
-- Python 3，依赖：`numpy`、`matplotlib`、`scipy`
+- Python 3，依赖：`numpy`、`matplotlib`、`scipy`；Sky130A PDK 安装推荐使用 `volare`
 
 <p align="center">
   <a href="./README.md"><img alt="English README" src="https://img.shields.io/badge/README-English-blue?style=for-the-badge"></a>

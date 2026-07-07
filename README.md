@@ -18,7 +18,7 @@
   <img src="https://img.shields.io/badge/ngspice-required-orange.svg" alt="ngspice required">
 </p>
 
-Three skill packages that give an Agent the ability to design and simulate analog circuits: **ngspice basics** / **gm/ID design** / **PTM model library**.
+Four skill packages that give an Agent the ability to design and simulate analog circuits: **ngspice basics** / **gm/ID design** / **PTM model library** / **Sky130A PDK workflow**.
 
 > **If you are human**: the examples below include images that show each skill's output at a glance.
 
@@ -31,6 +31,7 @@ Three skill packages that give an Agent the ability to design and simulate analo
 | **ngspice** | Beginner | 9 standard simulation examples (DC / AC / Tran / Noise) for learning SPICE from scratch |
 | **gmoverid** | Advanced | gm/ID characterization simulation + design API, with automatic lookup of W, Id, Vgs, fT, and gm*ro |
 | **transistor-models** | Model library | Full PTM model files (bulk silicon 65-180nm, HP/LP 22-45nm, FinFET 7-20nm) |
+| **sky130-pdk** | Open PDK workflow | Install/locate Sky130A with Volare and run ngspice PVT + Monte Carlo smoke tests |
 
 ---
 
@@ -141,6 +142,35 @@ File naming rules:
 
 For the detailed parameter table, see [`transistor-models/references/model_params.md`](./transistor-models/references/model_params.md).
 
+---
+
+## Skill 4: sky130-pdk
+
+Sky130A is a real open PDK workflow, not a PTM model file. This skill does not vendor the PDK payload; it teaches the Agent how to install or locate Sky130A with Volare/open_pdks and how to run ngspice PVT + Monte Carlo smoke tests.
+
+Included smoke examples:
+
+- NMOS Id-Vgs across `tt/ff/ss/fs/sf` plus MC current spread.
+- Three-stage CMOS ring oscillator frequency across process corners and MC.
+- Five-transistor OTA low-frequency gain across process corners and MC.
+- Paired `.scs` and ngspice `.spi` ring oscillator / five-transistor OTA examples, plus a small Sky130 SCS-to-SPI converter for user circuit netlists.
+
+Typical install:
+
+```bash
+python3 -m pip install --user volare
+volare enable --pdk sky130 c6d73a35f524070e85faff4a6a9eef49553ebc2b
+```
+
+Typical model entry:
+
+```spice
+.lib "$PDK_ROOT/sky130A/libs.tech/combined/continuous/sky130.lib.spice" tt
+.lib "$PDK_ROOT/sky130A/libs.tech/combined/continuous/sky130.lib.spice" mc
+```
+
+See [`sky130-pdk/SKILL.md`](./sky130-pdk/SKILL.md) for usage.
+
 ## Copyright Notice
 
 The model files are copyrighted by the Arizona State University PTM project and are free for academic research. Please cite the following when using them:
@@ -159,7 +189,7 @@ The model files are copyrighted by the Arizona State University PTM project and 
 
 ```bash
 git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-skill \
-  && cp -r /tmp/gmoverid-skill/{ngspice,gmoverid,transistor-models} ~/.claude/skills/ \
+  && cp -r /tmp/gmoverid-skill/{ngspice,gmoverid,transistor-models,sky130-pdk} ~/.claude/skills/ \
   && rm -rf /tmp/gmoverid-skill
 ```
 
@@ -168,7 +198,7 @@ git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-sk
 ```bash
 git clone --depth 1 https://github.com/Arcadia-1/gmoverid-skill /tmp/gmoverid-skill \
   && mkdir -p .claude/skills \
-  && cp -r /tmp/gmoverid-skill/{ngspice,gmoverid,transistor-models} .claude/skills/ \
+  && cp -r /tmp/gmoverid-skill/{ngspice,gmoverid,transistor-models,sky130-pdk} .claude/skills/ \
   && rm -rf /tmp/gmoverid-skill
 ```
 
@@ -180,14 +210,14 @@ Run the following in Claude Code:
 /skills
 ```
 
-The output should include the three skills `ngspice`, `gmoverid`, and `transistor-models`, indicating that installation succeeded.
+The output should include `ngspice`, `gmoverid`, `transistor-models`, and `sky130-pdk`, indicating that installation succeeded.
 
 > If you are an Agent, perform the installation steps above on behalf of the user. Choose either the global or project-level installation path according to the user's needs; no manual user action is required.
 
 ## Requirements
 
 - [ngspice](http://ngspice.sourceforge.net/) (installed globally on the system)
-- Python 3, with dependencies: `numpy`, `matplotlib`, `scipy`
+- Python 3, with dependencies: `numpy`, `matplotlib`, `scipy`; `volare` is recommended for Sky130A PDK installation
 
 <p align="center">
   <a href="./README.zh-CN.md"><img alt="中文 README" src="https://img.shields.io/badge/README-%E4%B8%AD%E6%96%87-blue?style=for-the-badge"></a>
