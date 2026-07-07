@@ -32,6 +32,7 @@ _CONTROL_COMMANDS = {
     "echo",
     "let",
     "linearize",
+    "meas",
     "noise",
     "op",
     "plot",
