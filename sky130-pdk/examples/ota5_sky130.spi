@@ -1,0 +1,27 @@
+* Sky130A ngspice five-transistor OTA example.
+.lib "$PDK_ROOT/sky130A/libs.tech/combined/continuous/sky130.lib.spice" tt
+.options method=gear reltol=2e-3 abstol=1e-12 vntol=1e-6 chgtol=1e-15
+.save v(out)
+.param vdd=1.8
+.param vcm=0.9
+.param vbias=0.72
+
+VDD vdd 0 {vdd}
+VIP inp 0 {vcm} AC 0.5
+VIN inn 0 {vcm} AC -0.5
+VBIAS vb 0 {vbias}
+
+XN1 left inp tail 0 sky130_fd_pr__nfet_01v8 l=0.5 w=8 nf=1
+XN2 out inn tail 0 sky130_fd_pr__nfet_01v8 l=0.5 w=8 nf=1
+XP3 left left vdd vdd sky130_fd_pr__pfet_01v8 l=0.5 w=16 nf=1
+XP4 out left vdd vdd sky130_fd_pr__pfet_01v8 l=0.5 w=16 nf=1
+XN5 tail vb 0 0 sky130_fd_pr__nfet_01v8 l=0.5 w=16 nf=1
+
+CL out 0 100f
+
+.ac dec 40 1 1e9
+.meas ac gain10_v FIND vm(out) AT=10
+.meas ac gain10_db FIND vdb(out) AT=10
+.meas ac gain1k_v FIND vm(out) AT=1k
+.meas ac gain1k_db FIND vdb(out) AT=1k
+.end

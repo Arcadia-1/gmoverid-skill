@@ -1,0 +1,19 @@
+simulator lang=spectre
+parameters vdd=1.8 vcm=0.9 vbias=0.72
+include "sky130.lib.spice" section=tt
+
+save v(out)
+
+VDD (vdd 0) vsource dc=vdd
+VIP (inp 0) vsource dc=vcm mag=0.5
+VIN (inn 0) vsource dc=vcm mag=-0.5
+VBIAS (vb 0) vsource dc=vbias
+
+XN1 (left inp tail 0) sky130_fd_pr__nfet_01v8 l=0.5 w=8 nf=1
+XN2 (out inn tail 0) sky130_fd_pr__nfet_01v8 l=0.5 w=8 nf=1
+XP3 (left left vdd vdd) sky130_fd_pr__pfet_01v8 l=0.5 w=16 nf=1
+XP4 (out left vdd vdd) sky130_fd_pr__pfet_01v8 l=0.5 w=16 nf=1
+XN5 (tail vb 0 0) sky130_fd_pr__nfet_01v8 l=0.5 w=16 nf=1
+
+CL (out 0) capacitor c=100f
+ac1 ac dec=40 start=1 stop=1e9
