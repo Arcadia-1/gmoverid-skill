@@ -14,7 +14,7 @@ Core benches:
 
 - `tb_open_loop`: DC operating point, open-loop AC gain, noise run.
 - `tb_closed_loop`: unity-gain follower transient response.
-- `tb_diff_gain`: differential input to single-ended output AC gain.
+- `tb_dm_to_se_gain`: differential-mode input to single-ended output AC gain.
 - `tb_common_mode_gain`: common-mode input to output gain for CMRR.
 - `tb_psrr_plus`: VDD ripple to output gain.
 - `tb_psrr_minus`: VSS ripple to output gain.
@@ -34,6 +34,6 @@ ngspice -b tb_closed_loop.spi
 The `.scs` versions can be converted with:
 
 ```bash
-python3 ../../assets/scs_sky130_to_ngspice_sky130.py tb_diff_gain.scs -o /tmp/tb_diff_gain.spi
-ngspice -b /tmp/tb_diff_gain.spi
+python3 ../../assets/scs_sky130_to_ngspice_sky130.py tb_dm_to_se_gain.scs -o /tmp/tb_dm_to_se_gain.spi
+ngspice -b /tmp/tb_dm_to_se_gain.spi
 ```

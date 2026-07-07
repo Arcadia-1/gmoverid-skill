@@ -1,4 +1,4 @@
-* Differential input to single-ended output gain.
+* Differential-mode input to single-ended output gain.
 .lib "$PDK_ROOT/sky130A/libs.tech/combined/continuous/sky130.lib.spice" tt
 .include "five_transistor_ota.spi"
 .save v(vout)
@@ -13,8 +13,8 @@ CLOAD vout 0 {CL}
 
 .control
 ac dec 40 1 1e9
-meas ac adiff_10hz_db FIND vdb(vout) AT=10
-meas ac adiff_1k_db FIND vdb(vout) AT=1k
+meas ac adm_to_se_10hz_db FIND vdb(vout) AT=10
+meas ac adm_to_se_1k_db FIND vdb(vout) AT=1k
 quit
 .endc
 .end

@@ -8,9 +8,9 @@ For a full characterization or benchmark task, start with these six core benches
 
 | Testbench | Purpose |
 |---|---|
-| `tb_open_loop.scs` | DC operating point, open-loop differential gain, bandwidth, output noise |
+| `tb_open_loop.scs` | DC operating point, open-loop differential-mode to single-ended gain, bandwidth, output noise |
 | `tb_closed_loop.scs` | unity-gain or fixed-gain feedback, transient settling, slew rate, large-signal recovery |
-| `tb_diff_gain.scs` | explicit differential-input to single-ended-output AC gain |
+| `tb_dm_to_se_gain.scs` | explicit differential-mode input to single-ended-output AC gain |
 | `tb_common_mode_gain.scs` | input common-mode to output gain for CMRR |
 | `tb_psrr_plus.scs` | VDD ripple to output gain for PSRR+ |
 | `tb_psrr_minus.scs` | VSS/GND ripple to output gain for PSRR- |
