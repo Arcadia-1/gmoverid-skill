@@ -153,7 +153,7 @@ Included smoke examples:
 - NMOS Id-Vgs across `tt/ff/ss/fs/sf` plus MC current spread.
 - Three-stage CMOS ring oscillator frequency across process corners and MC.
 - Five-transistor OTA low-frequency gain across process corners and MC.
-- Paired `.scs` and ngspice `.spi` ring oscillator / five-transistor OTA examples, plus a small Sky130 SCS-to-SPI converter for user circuit netlists.
+- Paired `.scs` and ngspice `.spi` ring oscillator / five-transistor OTA examples, a 10-bench OTA characterization set, plus a small Sky130 SCS-to-ngspice-Sky130 converter for user circuit netlists.
 
 Typical install:
 

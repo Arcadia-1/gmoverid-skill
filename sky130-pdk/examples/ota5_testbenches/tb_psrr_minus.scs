@@ -1,0 +1,13 @@
+simulator lang=spectre
+parameters VDDVAL=1.8 VIC=0.9 VBIAS=0.72 CL=100f
+include "sky130.lib.spice" section=tt
+include "five_transistor_ota.scs"
+
+X_OTA (VSS VBIAS_N VDD VINN VINP VOUT) five_transistor_ota
+V_vss (VSS 0) vsource dc=0 mag=1 type=dc
+V_vdd (VDD VSS) vsource dc=VDDVAL mag=0 type=dc
+V_bias (VBIAS_N VSS) vsource dc=VBIAS type=dc
+Vinp (VINP VSS) vsource dc=VIC mag=0 type=dc
+Vinn (VINN VSS) vsource dc=VIC mag=0 type=dc
+C_load (VOUT VSS) capacitor c=CL
+ac1 ac dec=40 start=1 stop=1e9

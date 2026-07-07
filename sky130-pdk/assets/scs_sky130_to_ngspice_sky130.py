@@ -108,7 +108,18 @@ def convert_source(name: str, nodes: list[str], master: str, params: dict[str, s
     return " ".join(pieces)
 
 
-def convert_statement(stmt: str, model_lib: Path | None, default_corner: str, included_model: list[bool]) -> list[str]:
+def converted_source_name(name: str) -> str:
+    return name if name[:1].upper() in {"V", "I"} and len(name) > 1 and name[1:2].isdigit() else f"V{name}"
+
+
+def convert_statement(
+    stmt: str,
+    model_lib: Path | None,
+    default_corner: str,
+    included_model: list[bool],
+    current_dir: Path | None = None,
+    seen: set[Path] | None = None,
+) -> list[str]:
     lower = stmt.lower()
     if lower.startswith("simulator ") or lower.startswith("global "):
         return [f"* skipped Spectre control statement: {stmt}"]
@@ -123,6 +134,13 @@ def convert_statement(stmt: str, model_lib: Path | None, default_corner: str, in
         if "sky130" in include_path.lower() and model_lib is not None:
             included_model[0] = True
             return [f'.lib "{model_lib}" {section or default_corner}']
+        target = (current_dir / include_path).resolve() if current_dir is not None else Path(include_path)
+        if target.is_file() and target.suffix.lower() == ".scs":
+            return [
+                f"* begin converted include {include_path}",
+                *convert_file_body(target, model_lib, default_corner, included_model, seen or set()),
+                f"* end converted include {include_path}",
+            ]
         if section:
             return [f'.lib "{include_path}" {section}']
         return [f'.include "{include_path}"']
@@ -149,11 +167,28 @@ def convert_statement(stmt: str, model_lib: Path | None, default_corner: str, in
         if params.get("uic", "").lower() in {"1", "true", "yes"}:
             return [f".tran {step} {stop} 0 {step} uic"]
         return [f".tran {step} {stop}"]
+    if len(stmt.split()) >= 2 and stmt.split()[1].lower() == "dc":
+        params = split_params(stmt)
+        source = params.get("source")
+        if not source:
+            raise SystemExit(f"dc statement missing source=: {stmt}")
+        start = emit_value(params.get("start", "0"))
+        stop = emit_value(params.get("stop", "1"))
+        step = emit_value(params.get("step", "0.01"))
+        return [f".dc {converted_source_name(source)} {start} {stop} {step}"]
     if len(stmt.split()) >= 2 and stmt.split()[1].lower() == "ac":
         params = split_params(stmt)
         if "dec" in params:
             return [f".ac dec {params['dec']} {emit_value(params.get('start', '1'))} {emit_value(params.get('stop', '1e9'))}"]
         return [f".ac dec 40 {emit_value(params.get('start', '1'))} {emit_value(params.get('stop', '1e9'))}"]
+    if len(stmt.split()) >= 2 and stmt.split()[1].lower() == "noise":
+        params = split_params(stmt)
+        output = params.get("output", "vout")
+        source = converted_source_name(params.get("source", "VIN"))
+        dec = params.get("dec", "20")
+        start = emit_value(params.get("start", "1"))
+        stop = emit_value(params.get("stop", "1e6"))
+        return [f".noise v({output}) {source} dec {dec} {start} {stop}"]
     if stmt.startswith("."):
         return [stmt]
 
@@ -165,6 +200,10 @@ def convert_statement(stmt: str, model_lib: Path | None, default_corner: str, in
     params = split_params(rest)
     if master in {"vsource", "isource"}:
         return [convert_source(name, nodes, master, params)]
+    if master == "vcvs":
+        if len(nodes) != 4:
+            raise SystemExit(f"vcvs {name} needs four nodes")
+        return [f"E{name} {' '.join(nodes)} {emit_value(params.get('gain', '1'))}"]
     if master in {"capacitor", "resistor", "inductor"}:
         letter = {"capacitor": "C", "resistor": "R", "inductor": "L"}[master]
         key = {"capacitor": "c", "resistor": "r", "inductor": "l"}[master]
@@ -175,11 +214,29 @@ def convert_statement(stmt: str, model_lib: Path | None, default_corner: str, in
     return [f"X{name} {' '.join(nodes)} {master} {param_text}".rstrip()]
 
 
-def convert_text(text: str, model_lib: Path | None, corner: str, title: str) -> str:
+def convert_file_body(
+    path: Path,
+    model_lib: Path | None,
+    corner: str,
+    included_model: list[bool],
+    seen: set[Path],
+) -> list[str]:
+    path = path.resolve()
+    if path in seen:
+        return [f"* skipped duplicate include {path.name}"]
+    seen.add(path)
+    lines: list[str] = []
+    for stmt in split_statements(path.read_text(encoding="utf-8")):
+        lines.extend(convert_statement(stmt, model_lib, corner, included_model, path.parent, seen))
+    seen.remove(path)
+    return lines
+
+
+def convert_text(text: str, model_lib: Path | None, corner: str, title: str, current_dir: Path | None = None) -> str:
     included_model = [False]
     lines = [f"* {title} - converted from Sky130 Spectre-style subset"]
     for stmt in split_statements(text):
-        lines.extend(convert_statement(stmt, model_lib, corner, included_model))
+        lines.extend(convert_statement(stmt, model_lib, corner, included_model, current_dir, set()))
     if model_lib is not None and not included_model[0]:
         lines.insert(1, f'.lib "{model_lib}" {corner}')
     if not any(line.lower().startswith(".control") for line in lines):
@@ -201,7 +258,7 @@ def main() -> int:
     if model_lib is None:
         model_lib = continuous_model_lib(find_sky130a(args.pdk_root))
 
-    out = convert_text(args.input.read_text(encoding="utf-8"), model_lib, args.corner, args.input.name)
+    out = convert_text(args.input.read_text(encoding="utf-8"), model_lib, args.corner, args.input.name, args.input.parent)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(out, encoding="utf-8")
     print(f"wrote {args.output}")

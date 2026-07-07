@@ -1,0 +1,22 @@
+* Open-loop AC checks with several load capacitors.
+.lib "$PDK_ROOT/sky130A/libs.tech/combined/continuous/sky130.lib.spice" tt
+.include "five_transistor_ota.spi"
+.save v(vout)
+.param VDDVAL=1.8 VIC=0.9 VBIAS=0.72
+
+XOTA 0 vbias vdd vinn vinp vout five_transistor_ota
+VDD vdd 0 {VDDVAL}
+VBIAS vbias 0 {VBIAS}
+VINP vinp 0 {VIC} AC 0.5
+VINN vinn 0 {VIC} AC -0.5
+CLOAD vout 0 100f
+
+.control
+foreach load 25f 100f 500f 1p
+  alter CLOAD = $load
+  ac dec 40 1 1e9
+  meas ac gain1k_db FIND vdb(vout) AT=1k
+end
+quit
+.endc
+.end

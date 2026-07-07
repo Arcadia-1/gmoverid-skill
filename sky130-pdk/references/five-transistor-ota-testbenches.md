@@ -2,7 +2,9 @@
 
 A five-transistor OTA with differential input and single-ended output needs fewer benches than a fully differential Miller OTA because there is no `VOP/VON` output pair and usually no CMFB loop.
 
-For a full characterization or benchmark task, use these six core benches:
+Example files live under `examples/ota5_testbenches/`. Each bench has a Spectre-style `.scs` file and an ngspice `.spi` file.
+
+For a full characterization or benchmark task, start with these six core benches:
 
 | Testbench | Purpose |
 |---|---|
@@ -14,6 +16,24 @@ For a full characterization or benchmark task, use these six core benches:
 | `tb_psrr_minus.scs` | VSS/GND ripple to output gain for PSRR- |
 
 Treat PVT, Monte Carlo, load sweep, bias sweep, temperature sweep, and VDD sweep as run dimensions around these benches rather than as separate bench topologies.
+
+This skill also includes four useful run/sweep decks:
+
+| Testbench | Purpose |
+|---|---|
+| `tb_output_swing.scs` | closed-loop output swing under input DC sweep |
+| `tb_input_common_mode_range.scs` | output behavior across input common-mode sweep |
+| `tb_load_sweep.scs` | representative AC checks at several load capacitors |
+| `tb_bias_sweep.scs` | bias-voltage sweep |
+
+Run the ngspice versions from the example directory:
+
+```bash
+cd sky130-pdk/examples/ota5_testbenches
+export PDK_ROOT=/path/to/volare/sky130/versions/<commit>
+ngspice -b tb_open_loop.spi
+ngspice -b tb_psrr_plus.spi
+```
 
 For a lightweight PDK smoke test, the single `ota5_sky130` example is enough: it verifies that the Sky130 models load, the devices bias, and an AC gain measurement can run. Do not confuse that smoke with a full OTA benchmark.
 

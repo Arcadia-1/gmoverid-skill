@@ -1,0 +1,18 @@
+* Input common-mode to output gain for CMRR.
+.lib "$PDK_ROOT/sky130A/libs.tech/combined/continuous/sky130.lib.spice" tt
+.include "five_transistor_ota.spi"
+.save v(vout)
+.param VDDVAL=1.8 VIC=0.9 VBIAS=0.72 CL=100f
+
+XOTA 0 vbias vdd vinn vinp vout five_transistor_ota
+VDD vdd 0 {VDDVAL}
+VBIAS vbias 0 {VBIAS}
+VCM vcm 0 {VIC} AC 1
+EVINP vinp 0 vcm 0 1
+EVINN vinn 0 vcm 0 1
+CLOAD vout 0 {CL}
+
+.ac dec 40 1 1e9
+.meas ac acm_10hz_db FIND vdb(vout) AT=10
+.meas ac acm_1k_db FIND vdb(vout) AT=1k
+.end

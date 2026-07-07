@@ -69,24 +69,26 @@ The continuous Sky130 models use micron-valued `l` and `w` parameters in these e
 - `run_sky130_mos_iv_pvt_mc.py`: NMOS Id-Vgs smoke across `tt/ff/ss/fs/sf` plus MC current spread.
 - `run_sky130_ringosc_pvt_mc.py`: three-stage CMOS ring oscillator PVT/MC frequency smoke.
 - `run_sky130_five_transistor_ota_pvt_mc.py`: five-transistor OTA low-frequency AC gain PVT/MC smoke.
+- `examples/ota5_testbenches/`: paired `.scs` and `.spi` five-transistor OTA characterization benches.
 
 The ring oscillator and OTA examples belong in this skill because they are Sky130A PDK smoke/application examples. They are not generic ngspice tutorials and should not be placed in the PTM transistor-model library.
 
-## SCS To ngspice SPI
+## Sky130 SCS To ngspice Sky130
 
 ngspice does not parse full Spectre `.scs` syntax. This skill includes a small Sky130-oriented converter for user circuit netlists:
 
 ```bash
-python3 assets/scs130_to_ngspice.py examples/ringosc_sky130.scs -o /tmp/ringosc_sky130.spi
-python3 assets/scs130_to_ngspice.py examples/ota5_sky130.scs -o /tmp/ota5_sky130.spi
+python3 assets/scs_sky130_to_ngspice_sky130.py examples/ringosc_sky130.scs -o /tmp/ringosc_sky130.spi
+python3 assets/scs_sky130_to_ngspice_sky130.py examples/ota5_sky130.scs -o /tmp/ota5_sky130.spi
 ```
 
-The converter intentionally supports only a practical subset: `parameters`, `include ... section=`, `subckt`/`ends`, Sky130 subcircuit instances, `vsource`/`isource`, R/C/L passives, `save`, `ic`, and simple `tran`/`ac` analyses. It does not translate the Sky130 PDK model files themselves; output netlists reference the installed ngspice model library.
+The converter intentionally supports only a practical subset: `parameters`, `include ... section=`, local `.scs` includes, `subckt`/`ends`, Sky130 subcircuit instances, `vsource`/`isource`, `vcvs`, R/C/L passives, `save`, `ic`, and simple `tran`/`dc`/`ac`/`noise` analyses. It does not translate the Sky130 PDK model files themselves; output netlists reference the installed ngspice model library.
 
 Paired examples are in `examples/`:
 
 - `ringosc_sky130.scs` and `ringosc_sky130.spi`.
 - `ota5_sky130.scs` and `ota5_sky130.spi`.
+- `ota5_testbenches/tb_*.scs` and `ota5_testbenches/tb_*.spi`.
 
 ## References
 

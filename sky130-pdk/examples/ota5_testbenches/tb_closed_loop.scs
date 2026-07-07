@@ -1,0 +1,13 @@
+simulator lang=spectre
+parameters VDDVAL=1.8 VIC=0.9 VSTEP=0.05 VBIAS=0.72 CL=100f
+include "sky130.lib.spice" section=tt
+include "five_transistor_ota.scs"
+
+X_OTA (VSS VBIAS_N VDD VINN VINP VOUT) five_transistor_ota
+V_vss (VSS 0) vsource dc=0 type=dc
+V_vdd (VDD VSS) vsource dc=VDDVAL type=dc
+V_bias (VBIAS_N VSS) vsource dc=VBIAS type=dc
+V_input (VINP VSS) vsource type=pulse val0=VIC val1=(VIC+VSTEP) delay=20n rise=20p fall=20p width=80n period=200n
+E_feedback (VINN VSS VOUT VSS) vcvs gain=1
+C_load (VOUT VSS) capacitor c=CL
+tran1 tran step=50p stop=180n
