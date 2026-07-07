@@ -26,6 +26,29 @@ _SUFFIX = {
     "f": 1e-15,
     "a": 1e-18,
 }
+_CONTROL_COMMANDS = {
+    "destroy",
+    "display",
+    "echo",
+    "let",
+    "linearize",
+    "noise",
+    "op",
+    "plot",
+    "print",
+    "quit",
+    "reset",
+    "resume",
+    "run",
+    "set",
+    "setplot",
+    "setseed",
+    "show",
+    "tran",
+    "unset",
+    "wrdata",
+    "write",
+}
 
 
 def spectre_number(value: str) -> float | None:
@@ -74,7 +97,7 @@ def split_params(rest: str) -> dict[str, str]:
 
 def convert_source(name: str, nodes: list[str], master: str, params: dict[str, str]) -> str:
     letter = "V" if master == "vsource" else "I"
-    pieces = [f"{letter}{name}", *nodes]
+    pieces = [spice_name(letter, name), *nodes]
     source_type = params.pop("type", "dc").lower()
     dc_value = params.pop("dc", None)
     if dc_value is not None:
@@ -109,7 +132,11 @@ def convert_source(name: str, nodes: list[str], master: str, params: dict[str, s
 
 
 def converted_source_name(name: str) -> str:
-    return name if name[:1].upper() in {"V", "I"} and len(name) > 1 and name[1:2].isdigit() else f"V{name}"
+    return name if name[:1].upper() in {"V", "I"} else f"V{name}"
+
+
+def spice_name(prefix: str, name: str) -> str:
+    return name if name[:1].upper() == prefix.upper() else f"{prefix}{name}"
 
 
 def convert_statement(
@@ -123,9 +150,19 @@ def convert_statement(
     lower = stmt.lower()
     if lower.startswith("simulator ") or lower.startswith("global "):
         return [f"* skipped Spectre control statement: {stmt}"]
+    if lower == "control":
+        return [".control"]
+    if lower in {"endcontrol", "endc"}:
+        return [".endc"]
+    if lower.split(None, 1)[0] in _CONTROL_COMMANDS:
+        return [stmt]
+    if lower.startswith("options "):
+        return [".options " + stmt.split(None, 1)[1]]
     if lower.startswith("parameters "):
         body = stmt.split(None, 1)[1]
         return [".param " + " ".join(f"{k}={emit_value(v)}" for k, v in split_params(body).items())]
+    if lower.startswith("measure ") or lower.startswith("meas "):
+        return [".meas " + stmt.split(None, 1)[1]]
     if lower.startswith("include "):
         match = _INCLUDE_RE.match(stmt)
         if not match:
@@ -164,8 +201,9 @@ def convert_statement(
         params = split_params(stmt)
         step = emit_value(params.get("step", "1p"))
         stop = emit_value(params.get("stop", "1n"))
+        maxstep = emit_value(params.get("maxstep", params.get("max_step", params.get("strobeperiod", "1p"))))
         if params.get("uic", "").lower() in {"1", "true", "yes"}:
-            return [f".tran {step} {stop} 0 {step} uic"]
+            return [f".tran {step} {stop} 0 {maxstep} uic"]
         return [f".tran {step} {stop}"]
     if len(stmt.split()) >= 2 and stmt.split()[1].lower() == "dc":
         params = split_params(stmt)
@@ -203,15 +241,15 @@ def convert_statement(
     if master == "vcvs":
         if len(nodes) != 4:
             raise SystemExit(f"vcvs {name} needs four nodes")
-        return [f"E{name} {' '.join(nodes)} {emit_value(params.get('gain', '1'))}"]
+        return [f"{spice_name('E', name)} {' '.join(nodes)} {emit_value(params.get('gain', '1'))}"]
     if master in {"capacitor", "resistor", "inductor"}:
         letter = {"capacitor": "C", "resistor": "R", "inductor": "L"}[master]
         key = {"capacitor": "c", "resistor": "r", "inductor": "l"}[master]
         if key not in params:
             raise SystemExit(f"{master} {name} missing {key}=")
-        return [f"{letter}{name} {' '.join(nodes)} {emit_value(params[key])}"]
+        return [f"{spice_name(letter, name)} {' '.join(nodes)} {emit_value(params[key])}"]
     param_text = " ".join(f"{k}={emit_value(v)}" for k, v in params.items())
-    return [f"X{name} {' '.join(nodes)} {master} {param_text}".rstrip()]
+    return [f"{spice_name('X', name)} {' '.join(nodes)} {master} {param_text}".rstrip()]
 
 
 def convert_file_body(
@@ -232,16 +270,27 @@ def convert_file_body(
     return lines
 
 
-def convert_text(text: str, model_lib: Path | None, corner: str, title: str, current_dir: Path | None = None) -> str:
+def convert_text(
+    text: str,
+    model_lib: Path | None,
+    corner: str,
+    title: str,
+    current_dir: Path | None = None,
+    *,
+    add_model: bool = True,
+    add_control: bool = True,
+    add_end: bool = True,
+) -> str:
     included_model = [False]
     lines = [f"* {title} - converted from Sky130 Spectre-style subset"]
     for stmt in split_statements(text):
         lines.extend(convert_statement(stmt, model_lib, corner, included_model, current_dir, set()))
-    if model_lib is not None and not included_model[0]:
+    if add_model and model_lib is not None and not included_model[0]:
         lines.insert(1, f'.lib "{model_lib}" {corner}')
-    if not any(line.lower().startswith(".control") for line in lines):
+    if add_control and not any(line.lower().startswith(".control") for line in lines):
         lines.extend([".control", "run", "quit", ".endc"])
-    lines.append(".end")
+    if add_end:
+        lines.append(".end")
     return "\n".join(lines) + "\n"
 
 
@@ -252,13 +301,27 @@ def main() -> int:
     parser.add_argument("--pdk-root", help="Path containing sky130A/, or direct path to sky130A/.")
     parser.add_argument("--model-lib", type=Path, help="Direct path to sky130.lib.spice.")
     parser.add_argument("--corner", default="tt")
+    parser.add_argument(
+        "--fragment",
+        action="store_true",
+        help="Emit an include-safe netlist fragment: no auto model .lib, no auto .control block, and no final .end.",
+    )
     args = parser.parse_args()
 
     model_lib = args.model_lib
     if model_lib is None:
-        model_lib = continuous_model_lib(find_sky130a(args.pdk_root))
+        model_lib = None if args.fragment else continuous_model_lib(find_sky130a(args.pdk_root))
 
-    out = convert_text(args.input.read_text(encoding="utf-8"), model_lib, args.corner, args.input.name, args.input.parent)
+    out = convert_text(
+        args.input.read_text(encoding="utf-8"),
+        model_lib,
+        args.corner,
+        args.input.name,
+        args.input.parent,
+        add_model=not args.fragment,
+        add_control=not args.fragment,
+        add_end=not args.fragment,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(out, encoding="utf-8")
     print(f"wrote {args.output}")
