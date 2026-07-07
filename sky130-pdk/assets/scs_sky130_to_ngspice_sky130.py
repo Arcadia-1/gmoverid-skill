@@ -159,6 +159,8 @@ def convert_statement(
         return [stmt]
     if lower.startswith("options "):
         return [".options " + stmt.split(None, 1)[1]]
+    if lower.startswith("temp "):
+        return [".temp " + emit_value(stmt.split(None, 1)[1])]
     if lower.startswith("parameters "):
         body = stmt.split(None, 1)[1]
         return [".param " + " ".join(f"{k}={emit_value(v)}" for k, v in split_params(body).items())]
