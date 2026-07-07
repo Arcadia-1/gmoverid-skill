@@ -153,7 +153,7 @@ Included smoke examples:
 - NMOS Id-Vgs across `tt/ff/ss/fs/sf` plus MC current spread.
 - Three-stage CMOS ring oscillator frequency across process corners and MC.
 - Five-transistor OTA low-frequency gain across process corners and MC.
-- Paired `.scs` and ngspice `.spi` ring oscillator / five-transistor OTA examples, a 10-bench OTA characterization set, plus a small Sky130 SCS-to-ngspice-Sky130 converter for user circuit netlists.
+- Standalone `.scs` and ngspice `.spi` examples for `ring_oscillator`, `ota-5t`, and `amp-2s-miller`, plus a small Sky130 SCS-to-ngspice-Sky130 converter for user circuit netlists.
 
 Typical install:
 
@@ -177,8 +177,8 @@ Run a direct ngspice example:
 
 ```bash
 export PDK_ROOT="$(volare path)/volare/sky130/versions/$(volare output --pdk sky130)"
-cd examples/ota5_testbenches
-ngspice -b tb_open_loop.spi
+cd gmoverid-skill/sky130-pdk/examples/ota-5t
+ngspice -b tb.spi
 ```
 
 Typical model entry:

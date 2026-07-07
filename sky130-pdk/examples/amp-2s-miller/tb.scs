@@ -1,0 +1,19 @@
+simulator lang=spectre
+include "sky130.lib.spice" section=tt
+include "circuit.scs"
+options method=gear reltol=2e-3 abstol=1e-12 vntol=1e-6 chgtol=1e-15
+parameters vddval=1.8 vcm=0.9 vbiasval=0.72
+
+VSS (vss 0) vsource dc=0
+VDD (vdd vss) vsource dc=vddval
+VBIAS (vbias vss) vsource dc=vbiasval
+VIP (vinp vss) vsource dc=vcm mag=0.5
+VIN (vinn vss) vsource dc=vcm mag=-0.5
+XAMP (vss vbias vdd vinn vinp vout) amp_2s_miller
+CL (vout vss) capacitor c=500f
+
+ac1 ac dec=60 start=1 stop=1e9
+measure ac gain10_v FIND vm(vout) AT=10
+measure ac gain10_db FIND vdb(vout) AT=10
+measure ac gain1k_v FIND vm(vout) AT=1k
+measure ac gain1k_db FIND vdb(vout) AT=1k

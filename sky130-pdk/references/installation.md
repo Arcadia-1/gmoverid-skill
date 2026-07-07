@@ -71,8 +71,8 @@ Run one ngspice `.spi` deck directly:
 
 ```bash
 export PDK_ROOT="$(volare path)/volare/sky130/versions/$(volare output --pdk sky130)"
-cd examples/ota5_testbenches
-ngspice -b tb_open_loop.spi
+cd examples/ota-5t
+ngspice -b tb.spi
 ```
 
 ## What Not To Commit

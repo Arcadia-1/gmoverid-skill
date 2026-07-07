@@ -1,0 +1,13 @@
+* Include-safe Sky130A two-stage Miller amplifier module.
+
+.subckt amp_2s_miller vss vbias vdd vinn vinp vout
+XN1 nleft vinp tail vss sky130_fd_pr__nfet_01v8 l=0.6 w=10 nf=1
+XN2 nmid vinn tail vss sky130_fd_pr__nfet_01v8 l=0.6 w=10 nf=1
+XP3 nleft nleft vdd vdd sky130_fd_pr__pfet_01v8 l=0.6 w=20 nf=1
+XP4 nmid nleft vdd vdd sky130_fd_pr__pfet_01v8 l=0.6 w=20 nf=1
+XN5 tail vbias vss vss sky130_fd_pr__nfet_01v8 l=0.8 w=24 nf=1
+XN6 vout nmid vss vss sky130_fd_pr__nfet_01v8 l=0.6 w=24 nf=1
+XP7 vout nleft vdd vdd sky130_fd_pr__pfet_01v8 l=0.8 w=32 nf=1
+RZ nmid ncomp 2k
+CC ncomp vout 350f
+.ends amp_2s_miller

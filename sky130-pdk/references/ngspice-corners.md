@@ -63,7 +63,8 @@ If a measurement fails, inspect the per-run `.log` file in the script work direc
 ngspice does not understand complete Spectre `.scs` syntax. For simple Sky130 user circuits, use:
 
 ```bash
-python3 assets/scs_sky130_to_ngspice_sky130.py examples/ota5_sky130.scs -o /tmp/ota5_sky130.spi
+python3 assets/scs_sky130_to_ngspice_sky130.py examples/ota-5t/tb.scs -o /tmp/ota-5t_tb.spi
+ngspice -b /tmp/ota-5t_tb.spi
 ```
 
 This converts a narrow circuit subset to ngspice `.spi`; it is not a general Spectre simulator replacement and it does not convert PDK model internals.

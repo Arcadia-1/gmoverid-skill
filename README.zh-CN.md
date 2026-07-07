@@ -153,7 +153,7 @@ Sky130A 是真实的开源 PDK 工作流，不是 PTM 模型文件。这个技�
 - NMOS Id-Vgs：覆盖 `tt/ff/ss/fs/sf` process corners，并统计 MC 电流分布。
 - 三级 CMOS ring oscillator：统计 process/MC 下的振荡频率。
 - 五管 OTA：统计 process/MC 下的低频小信号增益。
-- 成对的 `.scs` 和 ngspice `.spi` 版 ring oscillator / 五管 OTA 示例、10 个五管 OTA 表征测试台，以及一个面向 Sky130 用户电路网表子集的 SCS-to-ngspice-Sky130 转换器。
+- `ring_oscillator`、`ota-5t`、`amp-2s-miller` 三个独立电路目录，各自提供 `.scs` 和 ngspice `.spi` 示例，以及一个面向 Sky130 用户电路网表子集的 SCS-to-ngspice-Sky130 转换器。
 
 典型安装：
 
@@ -177,8 +177,8 @@ python3 assets/run_sky130_five_transistor_ota_pvt_mc.py --mc-runs 3
 
 ```bash
 export PDK_ROOT="$(volare path)/volare/sky130/versions/$(volare output --pdk sky130)"
-cd examples/ota5_testbenches
-ngspice -b tb_open_loop.spi
+cd gmoverid-skill/sky130-pdk/examples/ota-5t
+ngspice -b tb.spi
 ```
 
 典型模型入口：

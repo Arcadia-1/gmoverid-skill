@@ -1,0 +1,12 @@
+simulator lang=spectre
+
+subckt aa_inv in out vdd vss
+XP (out in vdd vdd) sky130_fd_pr__pfet_01v8 l=0.15 w=1.26 nf=1
+XN (out in vss vss) sky130_fd_pr__nfet_01v8 l=0.15 w=0.42 nf=1
+ends aa_inv
+
+subckt ring_oscillator vdd vss out tap1 tap2
+X0 (tap2 out vdd vss) aa_inv
+X1 (out tap1 vdd vss) aa_inv
+X2 (tap1 tap2 vdd vss) aa_inv
+ends ring_oscillator
