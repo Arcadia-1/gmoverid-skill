@@ -159,7 +159,26 @@ Sky130A 是真实的开源 PDK 工作流，不是 PTM 模型文件。这个技�
 
 ```bash
 python3 -m pip install --user volare
+export PATH="$HOME/.local/bin:$PATH"
 volare enable --pdk sky130 c6d73a35f524070e85faff4a6a9eef49553ebc2b
+```
+
+从克隆仓库直接跑 smoke：
+
+```bash
+git clone https://github.com/Arcadia-1/gmoverid-skill
+cd gmoverid-skill/sky130-pdk
+python3 assets/run_sky130_mos_iv_pvt_mc.py --mc-runs 3
+python3 assets/run_sky130_ringosc_pvt_mc.py --mc-runs 3
+python3 assets/run_sky130_five_transistor_ota_pvt_mc.py --mc-runs 3
+```
+
+直接跑 ngspice 示例：
+
+```bash
+export PDK_ROOT="$(volare path)/volare/sky130/versions/$(volare output --pdk sky130)"
+cd examples/ota5_testbenches
+ngspice -b tb_open_loop.spi
 ```
 
 典型模型入口：

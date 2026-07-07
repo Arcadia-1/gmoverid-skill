@@ -15,6 +15,12 @@ Check the tool:
 volare --version
 ```
 
+Install ngspice with your system package manager and verify it is visible:
+
+```bash
+ngspice -v
+```
+
 ## Enable Sky130
 
 The smoke examples in this skill were verified with:
@@ -49,6 +55,24 @@ The smoke scripts also accept a direct `sky130A` path:
 
 ```bash
 python3 assets/run_sky130_ringosc_pvt_mc.py --pdk-root /path/to/sky130A
+```
+
+## Smoke Test From A Cloned Repo
+
+```bash
+git clone https://github.com/Arcadia-1/gmoverid-skill
+cd gmoverid-skill/sky130-pdk
+python3 assets/run_sky130_mos_iv_pvt_mc.py --mc-runs 3
+python3 assets/run_sky130_ringosc_pvt_mc.py --mc-runs 3
+python3 assets/run_sky130_five_transistor_ota_pvt_mc.py --mc-runs 3
+```
+
+Run one ngspice `.spi` deck directly:
+
+```bash
+export PDK_ROOT="$(volare path)/volare/sky130/versions/$(volare output --pdk sky130)"
+cd examples/ota5_testbenches
+ngspice -b tb_open_loop.spi
 ```
 
 ## What Not To Commit
