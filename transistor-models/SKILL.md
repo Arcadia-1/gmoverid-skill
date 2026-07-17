@@ -1,6 +1,6 @@
 ---
 name: transistor-models
-description: "Complete PTM (Predictive Technology Model) MOSFET model library from mec.umn.edu/ptm, covering all nodes: bulk conventional 180/130/90/65nm, bulk HP/LP 45/32/22nm (BSIM4), and PTM-MG multi-gate FinFET 7/10/14/16/20nm (BSIM-CMG, HP + LSTP). No manual downloads required after installing this skill. Independent of the gmoverid skill — can be used directly in any ngspice/HSPICE project."
+description: "Complete PTM (Predictive Technology Model) MOSFET model library for circuit simulation, covering all nodes: bulk conventional 180/130/90/65nm, bulk HP/LP 45/32/22nm (BSIM4), and PTM-MG multi-gate FinFET 7/10/14/16/20nm (BSIM-CMG, HP + LSTP). No manual downloads required after installing this skill. Independent of the gmoverid skill — can be used directly in any ngspice/HSPICE project. Use when the user needs transistor models or SPICE models for circuit simulation, asks about process technology nodes, wants to set up a new SPICE simulation project, needs MOSFET device models for analog or digital design, or references PTM, BSIM, or FinFET models."
 ---
 
 # Transistor Models Skill — Complete PTM Library
@@ -138,6 +138,8 @@ Full parameter table in `references/model_params.md`.
 
 If you have your own `.lib` file (foundry PDK or measured):
 1. Copy it into the project `models/` directory.
-2. Find the `.model` name inside the file (e.g. `.model mynmos NMOS level=54`).
-3. Instantiate using that name: `M1 d g s b mynmos W=... L=...`
-4. Configure sweep ranges based on `vth0`, `tox`, etc.
+2. Verify the file was copied: `ls -la models/` and confirm the `.lib` file is present and non-empty.
+3. Find the `.model` name inside the file (e.g. `.model mynmos NMOS level=54`).
+4. Instantiate using that name: `M1 d g s b mynmos W=... L=...`
+5. Run a quick DC operating-point check (`.op`) to verify the model loads without errors before running full simulations.
+6. Configure sweep ranges based on `vth0`, `tox`, etc.
